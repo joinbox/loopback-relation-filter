@@ -1,6 +1,12 @@
 # loopback-relation-filter
 Enables where query filters on related loopback models.
 
+## Features
+
+* Full support of postgresql connector
+* The queries are build internally with Knex.js
+* Beta support of mysql connector
+
 ## Configuration
 
 Enable/disable extended searching for all models in your `component-config`:
@@ -52,4 +58,5 @@ Check the `package.json` to see how to execute tests:
   - **integration:** `npm run test:integration`
   - **watch tests during development:** `npm run test:watch` (uses mocha's `--watch` option)
   - **linting:** `npm run lint`
-  
+
+To launch test for mysql connector use `NODE_ENV=mysql_test` 

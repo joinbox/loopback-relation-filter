@@ -13,7 +13,7 @@ module.exports = class ModelWrapper {
     getTable() {
         const schema = this.getSchema();
         const table = this.getTableName();
-        return `${schema}.${table}`;
+        return (schema) ? `${schema}.${table}`: `${table}`;
     }
 
     getTableName() {
@@ -21,7 +21,7 @@ module.exports = class ModelWrapper {
     }
 
     getSchema() {
-        return this.connector.schema(this.getModelName()) || 'public';
+        return this.connector.schema(this.getModelName());
     }
 
     getFullyQualifiedTable() {

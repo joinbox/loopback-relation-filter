@@ -4,7 +4,7 @@ const Microservice = require('@joinbox/loopback-microservice');
 
 before(async function() {
     const appRootDir = path.resolve(__dirname, '../server');
-    const env = 'test';
+    const env = process.env.NODE_ENV || 'test';
     const options = {
         appRootDir,
         env,
