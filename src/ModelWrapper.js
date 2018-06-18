@@ -142,6 +142,10 @@ module.exports = class ModelWrapper {
         return this.model.modelName;
     }
 
+    getDatasourceName() {
+        return this.model.dataSource.name;
+    }
+
     as(alias) {
         return new ModelWrapper(this.model, alias);
     }

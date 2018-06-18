@@ -1,7 +1,7 @@
 const error = require('./src/error');
 
 const SearchQueryBuilder = require('./src/SearchQueryBuilder');
-const { UnknownPropertyError } = require('./src/error');
+const { UnknownPropertyError, UnsupportedDatasourceError } = require('./src/error');
 
 /**
  * Loopback component that allows filtering over related models using the where filter.
@@ -36,10 +36,15 @@ module.exports.error = error;
 function extendedFindQuery(model, models, { rejectUnknownProperties = false, preserveColumnCase = true } = {}) {
     return function(ctx, next) {
         const originalWhere = getWhereFilter(ctx);
+        /**
+         * @todo: check if the connector supports/requires filtering
+         * @todo: check if the query accesses relations
+         */
         if (!originalWhere) {
             next();
         } else {
-            const builder = new SearchQueryBuilder(models, { rejectUnknownProperties, preserveColumnCase });
+            const options = { rejectUnknownProperties, preserveColumnCase };
+            const builder = new SearchQueryBuilder(models, options);
             const query = Object.assign({}, originalWhere);
 
             try {
@@ -68,6 +73,8 @@ function extendedFindQuery(model, models, { rejectUnknownProperties = false, pre
                 });
             } catch (err) {
                 if (err instanceof UnknownPropertyError) {
+                    err.status = 400;
+                } else if (err instanceof UnsupportedDatasourceError){
                     err.status = 400;
                 }
                 next(err);

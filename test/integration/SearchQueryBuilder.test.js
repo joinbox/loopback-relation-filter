@@ -2,20 +2,20 @@ const { expect } = require('chai');
 
 const SearchQueryBuilder = require('../../src/SearchQueryBuilder');
 
-describe('The SearchQueryBuilder', function(){
+describe('The SearchQueryBuilder', function() {
 
-    beforeEach('setup query builder', function(){
+    beforeEach('setup query builder', function() {
         // set the preserveColumnCase option to false, since the postgres connector seems to
         // do weird conversions now and then
         // @see: https://github.com/strongloop/loopback-connector-postgresql/issues/38
-        this.builder = new SearchQueryBuilder(this.models, {preserveColumnCase: false});
+        this.builder = new SearchQueryBuilder(this.models, { preserveColumnCase: false });
     });
 
     const cases = [
         {
             message: 'creates a base query if there are no where clauses',
             where: {},
-            result: 'select "book"."id" from "public"."book" as "book" group by "book"."id"'
+            result: 'select "book"."id" from "public"."book" as "book" group by "book"."id"',
         },
         {
             message: 'joins belongsTo relations and applies where clauses',
@@ -51,21 +51,21 @@ describe('The SearchQueryBuilder', function(){
                     where (("book_authors"."firstname" = 'Michael')
                     and ("book_coauthors"."firstname" = 'Michael')
                     and ("book_mainauthor"."firstname" = 'Michael'))
-                    group by "book"."id"`
+                    group by "book"."id"`,
         },
         {
             message: 'appends join clauses for the queried relations and filters unknown properties',
             where: {
                 publisher: {
-                    id: 1
+                    id: 1,
                 },
                 title: 'wow',
                 authors: {
                     firstName: 'Michael',
                     address: {
-                        zip: 4500
-                    }
-                }
+                        zip: 4500,
+                    },
+                },
             },
             result: `select "book"."id" from "public"."book" as "book"
                         inner join "public"."publisher" as "book_publisher" on "book"."publisherid" = "book_publisher"."id"
@@ -84,31 +84,31 @@ describe('The SearchQueryBuilder', function(){
                     and: [
                         {
                             firstName: {
-                                like: 'Michael'
+                                like: 'Michael',
                             },
 
                         },
                         {
                             lastName: {
-                                like: 'R%'
-                            }
-                        }
-                    ]
+                                like: 'R%',
+                            },
+                        },
+                    ],
                 },
                 pages: {
                     and: [
                         {
                             number: {
-                                gt: 2
-                            }
+                                gt: 2,
+                            },
                         },
                         {
                             number: {
-                                neq: null
-                            }
-                        }
-                    ]
-                }
+                                neq: null,
+                            },
+                        },
+                    ],
+                },
             },
             result: `select "book"."id" from "public"."book" as "book"
                         inner join "public"."authorbook" as "book_authorbook_authors" on "book"."id" = "book_authorbook_authors"."bookid"
@@ -127,11 +127,11 @@ describe('The SearchQueryBuilder', function(){
                     and: [
                         {
                             firstName: {
-                                like: 'Michael'
-                            }
-                        }
-                    ]
-                }
+                                like: 'Michael',
+                            },
+                        },
+                    ],
+                },
             },
             result: `select "book"."id" from "public"."book" as "book"
                         inner join "public"."authorbook" as "book_authorbook_authors" on "book"."id" = "book_authorbook_authors"."bookid"
@@ -199,11 +199,11 @@ describe('The SearchQueryBuilder', function(){
                                             },
                                         ],
                                     },
-                                }
+                                },
                             ],
                         },
                     },
-                ]
+                ],
             },
             result: `select "author"."id" from "public"."author" as "author" 
                 inner join "public"."authorbook" as "author_authorbook_books" 
@@ -218,8 +218,8 @@ describe('The SearchQueryBuilder', function(){
 
     runCases(cases, this);
 
-    describe('supports comparison operators on the root level', function(){
-        function createResult(comparator, value = 1, column = '"book"."id"'){
+    describe('supports comparison operators on the root level', function() {
+        function createResult(comparator, value = 1, column = '"book"."id"') {
             return `select "book"."id" from "public"."book" as "book"
                         where (${column} ${comparator} ${value}) group by "book"."id"`;
         }
@@ -231,67 +231,67 @@ describe('The SearchQueryBuilder', function(){
             },
             {
                 message: '=',
-                where: { id: {['=']: 1 }},
+                where: { id: { '=': 1 } },
                 result: createResult('='),
             },
             {
                 message: 'neq',
-                where: { id: { neq: 1 }},
+                where: { id: { neq: 1 } },
                 result: createResult('!='),
             },
             {
                 message: 'lt',
-                where: { id: { lt: 1 }},
+                where: { id: { lt: 1 } },
                 result: createResult('<'),
             },
             {
                 message: 'lte',
-                where: { id: { lte: 1 }},
+                where: { id: { lte: 1 } },
                 result: createResult('<='),
             },
             {
                 message: 'gt',
-                where: { id: { gt: 1 }},
+                where: { id: { gt: 1 } },
                 result: createResult('>'),
             },
             {
                 message: 'gte',
-                where: { id: { gte: 1 }},
+                where: { id: { gte: 1 } },
                 result: createResult('>='),
             },
             {
                 message: 'like',
-                where: { id: { like: '%2' }},
+                where: { id: { like: '%2' } },
                 result: createResult('like', "'%2'"),
             },
             {
                 message: 'ilike',
-                where: { id: { ilike: '%2' }},
+                where: { id: { ilike: '%2' } },
                 result: createResult('ilike', "'%2'"),
             },
             {
                 message: 'nlike',
-                where: { id: { nlike: '%2' }},
+                where: { id: { nlike: '%2' } },
                 result: createResult('not like', "'%2'"),
             },
             {
                 message: 'nilike',
-                where: { id: { nilike: '%2' }},
+                where: { id: { nilike: '%2' } },
                 result: createResult('not ilike', "'%2'"),
             },
             {
                 message: 'between',
-                where: { id: { between: [1, 100] }},
+                where: { id: { between: [1, 100] } },
                 result: createResult('between', '1 and 100'),
             },
             {
                 message: 'inq',
-                where: { id: { inq: [1, 10, 100] }},
+                where: { id: { inq: [1, 10, 100] } },
                 result: createResult('in', '(1, 10, 100)'),
             },
             {
                 message: 'nin',
-                where: { id: { nin: [1, 10, 100] }},
+                where: { id: { nin: [1, 10, 100] } },
                 result: createResult('not in', '(1, 10, 100)'),
             },
         ];
@@ -299,30 +299,30 @@ describe('The SearchQueryBuilder', function(){
         runCases(cases, this);
 
         it('throws an error if the rejectUnknownProperties is passed to the builder' +
-            'and invalid properties were found in the query', function(){
-            const builder = new SearchQueryBuilder(this.models, {rejectUnknownProperties: true});
+            'and invalid properties were found in the query', function() {
+            const builder = new SearchQueryBuilder(this.models, { rejectUnknownProperties: true });
             expect(() => {
                 builder.buildQuery('Book', {
                     where: {
-                        test: 'fake'
-                    }
+                        test: 'fake',
+                    },
                 });
             }).to.throw;
         });
 
-        it.skip("regexp: (not supported yet)", function(){
+        it.skip('regexp: (not supported yet)', function() {
             runCase.call(this, {
-                where: { id: { regexp: [0, 5, 10] }},
+                where: { id: { regexp: [0, 5, 10] } },
                 message: 'regexp',
-                result: ''
+                result: '',
             });
         });
 
-        it.skip("near: (not supported yet)", function(){
+        it.skip('near: (not supported yet)', function() {
             runCase.call(this, {
-                where: { id: { near: [0, 5, 10] }},
+                where: { id: { near: [0, 5, 10] } },
                 message: 'near',
-                result: ''
+                result: '',
             });
         });
 
@@ -336,10 +336,10 @@ describe('The SearchQueryBuilder', function(){
                 where: {
                     pages: {
                         number: {
-                            gt: 1
-                        }
+                            gt: 1,
+                        },
                     },
-                    id: 1
+                    id: 1,
                 },
                 result: `select "book"."id" from "public"."book" as "book"
                             inner join "public"."page" as "book_pages" on "book"."id" = "book_pages"."bookid"
@@ -349,24 +349,24 @@ describe('The SearchQueryBuilder', function(){
             },
             {
                 message: 'less than and greater than in or blocks',
-                where  : {
+                where: {
                     pages: {
                         or: [
                             {
                                 number: {
-                                    lt: 5
+                                    lt: 5,
                                 },
                             },
                             {
                                 number: {
-                                    gt: 10
-                                }
-                            }
-                        ]
+                                    gt: 10,
+                                },
+                            },
+                        ],
                     },
-                    id   : 1
+                    id: 1,
                 },
-                result : `select "book"."id" from "public"."book" as "book"
+                result: `select "book"."id" from "public"."book" as "book"
                                 inner join "public"."page" as "book_pages" on "book"."id" = "book_pages"."bookid"
                             where (("book_pages"."number" < 5 or "book_pages"."number" > 10) and "book"."id" = 1)
                             group by "book"."id"`,
@@ -375,27 +375,27 @@ describe('The SearchQueryBuilder', function(){
 
     });
 
-    function normalizeExpectedResult(queryString){
+    function normalizeExpectedResult(queryString) {
         return queryString.replace(/\s{2,}/g, ' ');
     }
 
-    function runCases(cases, context){
+    function runCases(cases, context) {
         cases.forEach((testCase) => {
             runCase.call(context, testCase);
         });
     }
 
-    function runCase(testCase){
+    function runCase(testCase) {
         const model = testCase.model || 'Book';
         const message = testCase.message;
 
-        it(message, function(){
+        it(message, function() {
             const filter = { where: testCase.where };
             const expectedResult = testCase.result;
 
             const query = this.builder.buildQuery(model, filter);
             const queryString = query.toString();
-            const normalizedResult = normalizeExpectedResult(expectedResult)
+            const normalizedResult = normalizeExpectedResult(expectedResult);
 
             expect(queryString).to.be.equal(normalizedResult);
         });

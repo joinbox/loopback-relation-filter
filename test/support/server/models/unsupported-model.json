@@ -1,0 +1,11 @@
+{
+    "name": "UnsupportedModel",
+    "plural": "unsupported-models",
+    "base": "PersistedModel",
+    "description": "Will be attached to an unsupported datasource",
+    "properties": {
+        "dummy": {
+            "type": "boolean"
+        }
+    }
+}

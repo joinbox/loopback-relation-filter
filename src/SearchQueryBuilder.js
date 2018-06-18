@@ -4,7 +4,10 @@ const ModelWrapper = require('./ModelWrapper');
 const TableAliasProvider = require('./TableAliasProvider');
 const SearchQueryNormalizer = require('./SearchQueryNormalizer');
 
-const { UnknownOperatorError }= require('./error');
+const {
+    UnknownOperatorError,
+    UnsupportedDatasourceError,
+} = require('./error');
 
 /**
  * @todo: remove the state by instantiating a new table alias provider
@@ -48,9 +51,18 @@ module.exports = class SearchQueryBuilder {
         return knex({ client });
     }
 
-    getClientName(model) {
+    _ensureConnectorSupport(model){
         const connectorName = model.getConnectorName();
-        return this._supportedClients[connectorName];
+        if(Object.prototype.hasOwnProperty.call(this._supportedClients, connectorName)){
+            return this._supportedClients[connectorName];
+        } else {
+            const msg = `Connector ${connectorName} is not supported by the relation-filter-component`;
+            throw new UnsupportedDatasourceError(msg);
+        }
+    }
+
+    getClientName(model) {
+        return this._ensureConnectorSupport(model);
     }
 
     queryRelationsAndProperties(builder, rootModel, aliasProvider, query) {
@@ -131,6 +143,16 @@ module.exports = class SearchQueryBuilder {
 
         const modelToAlias = this.createAlias(aliasProvider, rootModel.getName(), relation);
         const modelTo = ModelWrapper.fromModel(relation.modelTo, modelToAlias);
+
+        // ensure that the queried model has the same datasource as the root model
+        if (rootModel.getDatasourceName() !== modelTo.getDatasourceName()) {
+            const msg = `Model ${modelTo.getModelName()} (source: ${modelTo.getDatasourceName()})` +
+                        ` queried via relation "${relationName}" of ${rootModel.getModelName()}` +
+                        ` (source: ${rootModel.getDatasourceName()}) is not stored within the` +
+                        ' same datasource';
+            throw new UnsupportedDatasourceError(msg);
+        }
+
         const table = modelTo.getAliasedTable();
         const keyFrom = rootModel.getColumnName(relation.keyFrom, options);
 
@@ -197,6 +219,7 @@ module.exports = class SearchQueryBuilder {
         });
         // append all joins of the lower levels
         return children.reduce((allJoins, { model, query }) => {
+            this._ensureConnectorSupport(model);
             const lowerJoins = this.getAllJoins(model, query, aliasProvider);
             allJoins.push(...lowerJoins);
             return allJoins;

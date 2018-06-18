@@ -17,6 +17,10 @@
     "books": {
       "type": "hasMany",
       "model": "Book"
+    },
+    "unsupported": {
+      "type": "belongsTo",
+      "model": "UnsupportedModel"
     }
   },
   "acls": [],

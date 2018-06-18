@@ -20,6 +20,19 @@
         "dataSource": "db"
     },
     "Publisher": {
-        "dataSource": "db"
+        "dataSource": "db",
+        "options": {
+            "relationFilter":{
+                "enabled": true
+            }
+        }
+    },
+    "UnsupportedModel": {
+        "dataSource": "memory",
+        "options": {
+            "relationFilter": {
+                "enabled": true
+            }
+        }
     }
 }

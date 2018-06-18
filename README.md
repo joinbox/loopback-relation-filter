@@ -16,7 +16,7 @@ Enable/disable extended searching for all models in your `component-config`:
 
 ```
 
-Enable/disable searching in a specific model config:
+Enable/disable searching in a model definition `your-model.json`:
 
 ```Json
 {
@@ -24,6 +24,23 @@ Enable/disable searching in a specific model config:
         "enabled": true,
         "rejectUnknownProperties": true,
         "preserveColumnCase": false
+    }
+}
+```
+
+Enable/disable searching in the `model-config.json`:
+
+```Json
+{
+    "YourModel": {
+        "datasource": "ds",
+        "options": {
+            "relationFilter": {
+                "enabled": true,
+                "rejectUnknownProperties": true,
+                "preserveColumnCase": false
+            }
+        }
     }
 }
 ```

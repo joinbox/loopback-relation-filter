@@ -1,0 +1,20 @@
+version: 2
+jobs:
+  build:
+    docker:
+      - image: circleci/node:8
+      - image: circleci/postgres:latest
+        environment:
+          POSTGRES_USER: microservice_relation_filter_test_user
+          POSTGRES_DB: microservice_relation_filter_test
+          POSTGRES_PASSWORD: microservice_relation_filter_test_pwd
+    steps:
+      - checkout
+      - run: npm install
+      - run: dockerize -wait tcp://0.0.0.0:5432 -timeout 60s
+      - run: npm test
+workflows:
+  version: 2
+  test:
+    jobs:
+      - build
