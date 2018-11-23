@@ -378,6 +378,41 @@ describe('The SearchQueryBuilder mysql', function(){
 
     });
 
+    describe('supports order clause on related model', function(){
+
+      runCases([
+        {
+          message: 'Simple ordering on belongsTo',
+          order: 'publisher.name ASC',
+          result: `select \`book\`.\`id\` from \`Book\` as \`book\`
+          inner join \`Publisher\` as \`book_publisher\` on \`book\`.\`publisherid\` = \`book_publisher\`.\`id\`
+          group by \`book\`.\`id\`
+          order by \`book_publisher\`.\`name\` asc`,
+        },
+        {
+          message: 'Complexe ordering on belongsTo on belongsTo',
+          model: 'Page',
+          order: 'book.publisher.name ASC',
+          result: `select \`page\`.\`id\` from \`Page\` as \`page\`
+          inner join \`Book\` as \`page_book\` on \`page\`.\`bookid\` = \`page_book\`.\`id\`
+          inner join \`Publisher\` as \`book_publisher\` on \`page_book\`.\`publisherid\` = \`book_publisher\`.\`id\`
+          group by \`page\`.\`id\`
+          order by \`book_publisher\`.\`name\` asc`,
+        },
+        {
+          message: 'Multiple complexe ordering',
+          model: 'Page',
+          order: ['book.publisher.name ASC', 'number DESC'],
+          result: `select \`page\`.\`id\` from \`Page\` as \`page\`
+          inner join \`Book\` as \`page_book\` on \`page\`.\`bookid\` = \`page_book\`.\`id\`
+          inner join \`Publisher\` as \`book_publisher\` on \`page_book\`.\`publisherid\` = \`book_publisher\`.\`id\`
+          group by \`page\`.\`id\`
+          order by \`book_publisher\`.\`name\` asc, \`page\`.\`number\` desc`,
+        }
+      ], this);
+
+    });
+
     function normalizeExpectedResult(queryString){
         return queryString.replace(/\s{2,}/g, ' ');
     }

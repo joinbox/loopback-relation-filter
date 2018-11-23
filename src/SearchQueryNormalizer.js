@@ -1,6 +1,7 @@
 
 const ModelWrapper = require('./ModelWrapper');
 const error = require('./error');
+const _ = require('lodash');
 
 const defaultSupportedOpperators = [
     '=',
@@ -74,6 +75,27 @@ module.exports = class SearchQueryNormalizer {
         }
 
         return result;
+    }
+
+    normalizeOrder(rootModelName, order) {
+        const rootModel = this.getWrappedModel(rootModelName);
+        const normalizedOrder = [];
+
+        if(!order){
+          return normalizedOrder;
+        }
+
+        if(!Array.isArray(order)){
+          order = [order];
+        }
+
+        order.forEach( orderClause => {
+          const [propertyPath, direction] = orderClause.split(' ');
+
+          normalizedOrder.push(_.set({}, propertyPath, direction.toLowerCase()));
+        });
+
+        return normalizedOrder;
     }
 
     /**

@@ -1,4 +1,5 @@
 const knex = require('knex');
+const _ = require('lodash');
 
 const ModelWrapper = require('./ModelWrapper');
 const TableAliasProvider = require('./TableAliasProvider');
@@ -54,18 +55,20 @@ module.exports = class SearchQueryBuilder {
         return this._supportedClients[connectorName];
     }
 
-    queryRelationsAndProperties(builder, rootModel, aliasProvider, query) {
+    queryRelationsAndProperties(builder, rootModel, aliasProvider, query, order) {
 
         const joinAliasProvider = aliasProvider.spawnProvider();
         const filterAliasProvider = aliasProvider.spawnProvider();
         // 1. iterate the query and collect all joins
-        const joins = this.getAllJoins(rootModel, query, joinAliasProvider);
+        const joins = this.getAllJoins(rootModel, query, order, joinAliasProvider);
         joins.forEach(({ table, keyFrom, keyTo }) => {
             builder.join(table, { [keyFrom]: keyTo });
         });
         // 2. iterate the query and apply all filters (we need to keep track of the aliases the
         // same way we did before in the joins).
-        return this.applyFilters(builder, rootModel, query, filterAliasProvider);
+        this.applyFilters(builder, rootModel, query, filterAliasProvider);
+        // 3. iterate the order clauses and apply them
+        return this.applyOrder(builder, rootModel, order, filterAliasProvider);
     }
 
     applyFilters(builder, rootModel, { and = [], or = [] }, aliasProvider) {
@@ -107,6 +110,38 @@ module.exports = class SearchQueryBuilder {
                     value: query,
                 };
                 this.applyPropertyFilter(propertyFilter, subQueryBuilder);
+            }
+        });
+    }
+
+    applyOrder(builder, rootModel, orderClauses, aliasProvider) {
+      const relations = {};
+      const options = { preserveCase: this.preserveColumnCase };
+      orderClauses.forEach(order => {
+        this._handleOrder(order, builder, rootModel, aliasProvider, relations, options);
+      });
+
+      return builder;
+    }
+
+    _handleOrder(order, builder, rootModel, aliasProvider, relations, options) {
+        _.mapValues(order, (subOrder, propertyName) => {
+            if (rootModel.isRelation(propertyName)) {
+                const { modelTo } = this._trackAliases(
+                    rootModel,
+                    propertyName,
+                    aliasProvider,
+                    relations,
+                    options,
+                );
+                this._handleOrder(subOrder, builder, modelTo, aliasProvider, relations, options);
+            }
+            if (rootModel.isProperty(propertyName)) {
+                const propertyOrder = {
+                    property: rootModel.getColumnName(propertyName, options),
+                    direction: subOrder,
+                };
+                this.applyPropertyOrder(propertyOrder, builder);
             }
         });
     }
@@ -167,8 +202,8 @@ module.exports = class SearchQueryBuilder {
      * @param aliasProvider
      * @return {*}
      */
-    getAllJoins(rootModel, { and = [], or = [] }, aliasProvider) {
-        const filters = and.concat(or);
+    getAllJoins(rootModel, { and = [], or = [] }, order, aliasProvider) {
+        const filters = and.concat(or).concat(order);
         const children = [];
         const relations = {};
         const joins = [];
@@ -198,7 +233,11 @@ module.exports = class SearchQueryBuilder {
         });
         // append all joins of the lower levels
         return children.reduce((allJoins, { model, query }) => {
-            const lowerJoins = this.getAllJoins(model, query, aliasProvider);
+            let childOrder = [];
+            if(!query.and && !query.or){
+              childOrder = [query];
+            }
+            const lowerJoins = this.getAllJoins(model, query, childOrder, aliasProvider);
             allJoins.push(...lowerJoins);
             return allJoins;
         }, joins.slice(0));
@@ -303,6 +342,19 @@ module.exports = class SearchQueryBuilder {
     }
 
     /**
+     * Appends a order clause to the query passed by builder.
+     *
+     * @param   {property, direction} Whereas property is the fully resolved name of the property
+     *          and direction should be asc or desc
+     * @param {KnexQueryBuilder} the knex query builder
+     *
+     * @return {KnexQueryBuilder} the knex query builder
+     */
+    applyPropertyOrder({ property, direction }, builder) {
+      return builder.orderBy(property, direction);
+    }
+
+    /**
      * Creates the root select statement, normalizes the where query using the given normalizer
      * and recursively invokes the query building.
      *
@@ -319,12 +371,13 @@ module.exports = class SearchQueryBuilder {
         const tableName = rootModel.getAliasedTable();
 
         const basicSelect = builder(tableName).select(id).groupBy(id);
-        if (!filter.where) {
+        if (!filter.where && !filter.order) {
             return basicSelect;
         }
 
         const where = this.normalizer.normalizeQuery(rootModel.getName(), filter.where || {});
-        return this.queryRelationsAndProperties(basicSelect, rootModel, aliasProvider, where);
+        const order = this.normalizer.normalizeOrder(rootModel.getName(), filter.order);
+        return this.queryRelationsAndProperties(basicSelect, rootModel, aliasProvider, where, order);
     }
 
     /**

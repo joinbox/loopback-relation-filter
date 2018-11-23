@@ -11,6 +11,7 @@ describe('The Search Query Normalizer', () => {
     before('basic setup', function() {
         this.model = 'Book';
         this.normalize = (model, query) => this.normalizer.normalizeWhereQuery(model, query);
+        this.normalizeOrder = (model, order) => this.normalizer.normalizeOrder(model, order);
     });
 
     beforeEach(function() {
@@ -333,6 +334,69 @@ describe('The Search Query Normalizer', () => {
                     },
                 },
             ]);
+    });
+
+    it('normalize order clause on root model string input', function() {
+      const newOrder = this.normalizeOrder('Book', 'title ASC');
+
+      expect(newOrder).deep.equals([
+        {
+          title: 'asc',
+        },
+      ]);
+    });
+
+    it('normalize order clause on root model array input', function() {
+      const newOrder = this.normalizeOrder('Book', ['title DESC']);
+
+      expect(newOrder).deep.equals([
+        {
+          title: 'desc',
+        },
+      ]);
+    });
+
+    it('normalize order clause on related model string input', function() {
+      const newOrder = this.normalizeOrder('Book', 'publisher.name ASC');
+
+      expect(newOrder).deep.equals([
+        {
+          publisher: {
+            name: 'asc',
+          }
+        },
+      ]);
+    });
+
+    it('normalize order clause on deep related model string input', function() {
+      const newOrder = this.normalizeOrder('Page', 'book.publisher.name ASC');
+
+      expect(newOrder).deep.equals([
+        {
+          book : {
+            publisher: {
+              name: 'asc',
+            }
+          }
+        },
+      ]);
+    });
+
+    it('normalize mulitple order clause on related model', function() {
+      const newOrder = this.normalizeOrder('Page', ['book.publisher.name ASC', 'number DESC']);
+
+      expect(newOrder).deep.equals([
+        {
+          book : {
+            publisher: {
+              name: 'asc',
+            }
+          }
+        },
+        {
+          number: 'desc',
+        },
+      ]);
     });
 
 });
