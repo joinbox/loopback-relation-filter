@@ -20,6 +20,7 @@ module.exports = class SearchQueryBuilder {
         this.preserveColumnCase = preserveColumnCase;
         this._supportedClients = {
             postgresql: 'pg',
+            mysql: 'mysql'
         };
         this.supportedOperators = [
             '=',

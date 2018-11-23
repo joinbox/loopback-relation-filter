@@ -1,8 +1,11 @@
 const { expect } = require('chai');
 
+const SetupIntegration = require('../support/setup/integration');
 const SearchQueryBuilder = require('../../src/SearchQueryBuilder');
 
-describe('The SearchQueryBuilder', function(){
+describe('The SearchQueryBuilder mysql', function(){
+
+    SetupIntegration({ env: 'mysql_test' });
 
     beforeEach('setup query builder', function(){
         // set the preserveColumnCase option to false, since the postgres connector seems to
@@ -15,7 +18,7 @@ describe('The SearchQueryBuilder', function(){
         {
             message: 'creates a base query if there are no where clauses',
             where: {},
-            result: 'select "book"."id" from "public"."book" as "book" group by "book"."id"'
+            result: 'select \`book\`.\`id\` from \`Book\` as \`book\` group by \`book\`.\`id\`'
         },
         {
             message: 'joins belongsTo relations and applies where clauses',
@@ -24,10 +27,10 @@ describe('The SearchQueryBuilder', function(){
                     id: 1,
                 },
             },
-            result: `select "book"."id" from "public"."book" as "book"
-                        inner join "public"."publisher" as "book_publisher" on "book"."publisherid" = "book_publisher"."id"
-                        where (("book_publisher"."id" = 1))
-                     group by "book"."id"`,
+            result: `select \`book\`.\`id\` from \`Book\` as \`book\`
+                        inner join \`Publisher\` as \`book_publisher\` on \`book\`.\`publisherid\` = \`book_publisher\`.\`id\`
+                        where ((\`book_publisher\`.\`id\` = 1))
+                     group by \`book\`.\`id\``,
         },
         {
             message: 'correctly aliases different relations to the same model',
@@ -42,16 +45,16 @@ describe('The SearchQueryBuilder', function(){
                     firstName: 'Michael',
                 },
             },
-            result: `select "book"."id" from "public"."book" as "book"
-                        inner join "public"."authorbook" as "book_authorbook_authors" on "book"."id" = "book_authorbook_authors"."bookid"
-                        inner join "public"."author" as "book_authors" on "book_authorbook_authors"."authorid" = "book_authors"."id"
-                        inner join "public"."authorbook" as "book_authorbook_coauthors" on "book"."id" = "book_authorbook_coauthors"."bookid"
-                        inner join "public"."author" as "book_coauthors" on "book_authorbook_coauthors"."authorid" = "book_coauthors"."id"
-                        inner join "public"."author" as "book_mainauthor" on "book"."mainauthorid" = "book_mainauthor"."id"
-                    where (("book_authors"."firstname" = 'Michael')
-                    and ("book_coauthors"."firstname" = 'Michael')
-                    and ("book_mainauthor"."firstname" = 'Michael'))
-                    group by "book"."id"`
+            result: `select \`book\`.\`id\` from \`Book\` as \`book\`
+                        inner join \`AuthorBook\` as \`book_authorbook_authors\` on \`book\`.\`id\` = \`book_authorbook_authors\`.\`bookid\`
+                        inner join \`Author\` as \`book_authors\` on \`book_authorbook_authors\`.\`authorid\` = \`book_authors\`.\`id\`
+                        inner join \`AuthorBook\` as \`book_authorbook_coauthors\` on \`book\`.\`id\` = \`book_authorbook_coauthors\`.\`bookid\`
+                        inner join \`Author\` as \`book_coauthors\` on \`book_authorbook_coauthors\`.\`authorid\` = \`book_coauthors\`.\`id\`
+                        inner join \`Author\` as \`book_mainauthor\` on \`book\`.\`mainauthorid\` = \`book_mainauthor\`.\`id\`
+                    where ((\`book_authors\`.\`firstname\` = 'Michael')
+                    and (\`book_coauthors\`.\`firstname\` = 'Michael')
+                    and (\`book_mainauthor\`.\`firstname\` = 'Michael'))
+                    group by \`book\`.\`id\``
         },
         {
             message: 'appends join clauses for the queried relations and filters unknown properties',
@@ -67,14 +70,14 @@ describe('The SearchQueryBuilder', function(){
                     }
                 }
             },
-            result: `select "book"."id" from "public"."book" as "book"
-                        inner join "public"."publisher" as "book_publisher" on "book"."publisherid" = "book_publisher"."id"
-                        inner join "public"."authorbook" as "book_authorbook_authors" on "book"."id" = "book_authorbook_authors"."bookid"
-                        inner join "public"."author" as "book_authors" on "book_authorbook_authors"."authorid" = "book_authors"."id"
-                    where (("book_publisher"."id" = 1)
-                    and "book"."title" = 'wow'
-                    and ("book_authors"."firstname" = 'Michael'))
-                    group by "book"."id"`,
+            result: `select \`book\`.\`id\` from \`Book\` as \`book\`
+                        inner join \`Publisher\` as \`book_publisher\` on \`book\`.\`publisherid\` = \`book_publisher\`.\`id\`
+                        inner join \`AuthorBook\` as \`book_authorbook_authors\` on \`book\`.\`id\` = \`book_authorbook_authors\`.\`bookid\`
+                        inner join \`Author\` as \`book_authors\` on \`book_authorbook_authors\`.\`authorid\` = \`book_authors\`.\`id\`
+                    where ((\`book_publisher\`.\`id\` = 1)
+                    and \`book\`.\`title\` = 'wow'
+                    and (\`book_authors\`.\`firstname\` = 'Michael'))
+                    group by \`book\`.\`id\``,
 
         },
         {
@@ -110,15 +113,15 @@ describe('The SearchQueryBuilder', function(){
                     ]
                 }
             },
-            result: `select "book"."id" from "public"."book" as "book"
-                        inner join "public"."authorbook" as "book_authorbook_authors" on "book"."id" = "book_authorbook_authors"."bookid"
-                        inner join "public"."author" as "book_authors" on "book_authorbook_authors"."authorid" = "book_authors"."id"
-                        inner join "public"."page" as "book_pages" on "book"."id" = "book_pages"."bookid"
-                    where (("book_authors"."firstname" like 'Michael'
-                            and "book_authors"."lastname" like 'R%')
-                        and ("book_pages"."number" > 2
-                            and "book_pages"."number" != NULL))
-                    group by "book"."id"`,
+            result: `select \`book\`.\`id\` from \`Book\` as \`book\`
+                        inner join \`AuthorBook\` as \`book_authorbook_authors\` on \`book\`.\`id\` = \`book_authorbook_authors\`.\`bookid\`
+                        inner join \`Author\` as \`book_authors\` on \`book_authorbook_authors\`.\`authorid\` = \`book_authors\`.\`id\`
+                        inner join \`Page\` as \`book_pages\` on \`book\`.\`id\` = \`book_pages\`.\`bookid\`
+                    where ((\`book_authors\`.\`firstname\` like 'Michael'
+                            and \`book_authors\`.\`lastname\` like 'R%')
+                        and (\`book_pages\`.\`number\` > 2
+                            and \`book_pages\`.\`number\` != NULL))
+                    group by \`book\`.\`id\``,
         },
         {
             message: 'aliases join clauses with through models',
@@ -133,11 +136,11 @@ describe('The SearchQueryBuilder', function(){
                     ]
                 }
             },
-            result: `select "book"."id" from "public"."book" as "book"
-                        inner join "public"."authorbook" as "book_authorbook_authors" on "book"."id" = "book_authorbook_authors"."bookid"
-                        inner join "public"."author" as "book_authors" on "book_authorbook_authors"."authorid" = "book_authors"."id"
-                    where (("book_authors"."firstname" like 'Michael'))
-                    group by "book"."id"`,
+            result: `select \`book\`.\`id\` from \`Book\` as \`book\`
+                        inner join \`AuthorBook\` as \`book_authorbook_authors\` on \`book\`.\`id\` = \`book_authorbook_authors\`.\`bookid\`
+                        inner join \`Author\` as \`book_authors\` on \`book_authorbook_authors\`.\`authorid\` = \`book_authors\`.\`id\`
+                    where ((\`book_authors\`.\`firstname\` like 'Michael'))
+                    group by \`book\`.\`id\``,
         },
         {
             message: 'properly respects simple or clauses',
@@ -151,9 +154,9 @@ describe('The SearchQueryBuilder', function(){
                     },
                 ],
             },
-            result: `select "book"."id" from "public"."book" as "book" 
-                        where ("book"."title" = 'Animal Farm' or "book"."title" = '1984') 
-                    group by "book"."id"`,
+            result: `select \`book\`.\`id\` from \`Book\` as \`book\`
+                        where (\`book\`.\`title\` = 'Animal Farm' or \`book\`.\`title\` = '1984')
+                    group by \`book\`.\`id\``,
         },
         {
             message: 'properly respects or clauses',
@@ -169,12 +172,12 @@ describe('The SearchQueryBuilder', function(){
                     },
                 ],
             },
-            result: `select "book"."id" from "public"."book" as "book"
-                        inner join "public"."authorbook" as "book_authorbook_authors" on "book"."id" = "book_authorbook_authors"."bookid"
-                        inner join "public"."author" as "book_authors" on "book_authorbook_authors"."authorid" = "book_authors"."id"
-                    where ("book"."title" = 'Animal Farm' 
-                        or ("book_authors"."firstname" = 'Scott')) 
-                    group by "book"."id"`,
+            result: `select \`book\`.\`id\` from \`Book\` as \`book\`
+                        inner join \`AuthorBook\` as \`book_authorbook_authors\` on \`book\`.\`id\` = \`book_authorbook_authors\`.\`bookid\`
+                        inner join \`Author\` as \`book_authors\` on \`book_authorbook_authors\`.\`authorid\` = \`book_authors\`.\`id\`
+                    where (\`book\`.\`title\` = 'Animal Farm'
+                        or (\`book_authors\`.\`firstname\` = 'Scott'))
+                    group by \`book\`.\`id\``,
         },
         {
             message: 'joins multiple relations 1',
@@ -205,23 +208,23 @@ describe('The SearchQueryBuilder', function(){
                     },
                 ]
             },
-            result: `select "author"."id" from "public"."author" as "author" 
-                inner join "public"."authorbook" as "author_authorbook_books" 
-                    on "author"."id" = "author_authorbook_books"."authorid" 
-                inner join "public"."book" as "author_books" 
-                    on "author_authorbook_books"."bookid" = "author_books"."id" 
-                inner join "public"."publisher" as "book_publisher" 
-                    on "author_books"."publisherid" = "book_publisher"."id" 
-            where ("author"."lastname" like 'Orw%' and (("book_publisher"."name" = 'NAL'))) group by "author"."id"`,
+            result: `select \`author\`.\`id\` from \`Author\` as \`author\`
+                inner join \`AuthorBook\` as \`author_authorbook_books\`
+                    on \`author\`.\`id\` = \`author_authorbook_books\`.\`authorid\`
+                inner join \`Book\` as \`author_books\`
+                    on \`author_authorbook_books\`.\`bookid\` = \`author_books\`.\`id\`
+                inner join \`Publisher\` as \`book_publisher\`
+                    on \`author_books\`.\`publisherid\` = \`book_publisher\`.\`id\`
+            where (\`author\`.\`lastname\` like 'Orw%' and ((\`book_publisher\`.\`name\` = 'NAL'))) group by \`author\`.\`id\``,
         },
     ];
 
     runCases(cases, this);
 
     describe('supports comparison operators on the root level', function(){
-        function createResult(comparator, value = 1, column = '"book"."id"'){
-            return `select "book"."id" from "public"."book" as "book"
-                        where (${column} ${comparator} ${value}) group by "book"."id"`;
+        function createResult(comparator, value = 1, column = '\`book\`.\`id\`'){
+            return `select \`book\`.\`id\` from \`Book\` as \`book\`
+                        where (${column} ${comparator} ${value}) group by \`book\`.\`id\``;
         }
         const cases = [
             {
@@ -262,22 +265,22 @@ describe('The SearchQueryBuilder', function(){
             {
                 message: 'like',
                 where: { id: { like: '%2' }},
-                result: createResult('like', "'%2'"),
+                result: createResult('like', '\'%2\''),
             },
             {
                 message: 'ilike',
                 where: { id: { ilike: '%2' }},
-                result: createResult('ilike', "'%2'"),
+                result: createResult('ilike', '\'%2\''),
             },
             {
                 message: 'nlike',
                 where: { id: { nlike: '%2' }},
-                result: createResult('not like', "'%2'"),
+                result: createResult('not like', '\'%2\''),
             },
             {
                 message: 'nilike',
                 where: { id: { nilike: '%2' }},
-                result: createResult('not ilike', "'%2'"),
+                result: createResult('not ilike', '\'%2\''),
             },
             {
                 message: 'between',
@@ -310,7 +313,7 @@ describe('The SearchQueryBuilder', function(){
             }).to.throw;
         });
 
-        it.skip("regexp: (not supported yet)", function(){
+        it.skip('regexp: (not supported yet)', function(){
             runCase.call(this, {
                 where: { id: { regexp: [0, 5, 10] }},
                 message: 'regexp',
@@ -318,7 +321,7 @@ describe('The SearchQueryBuilder', function(){
             });
         });
 
-        it.skip("near: (not supported yet)", function(){
+        it.skip('near: (not supported yet)', function(){
             runCase.call(this, {
                 where: { id: { near: [0, 5, 10] }},
                 message: 'near',
@@ -341,11 +344,11 @@ describe('The SearchQueryBuilder', function(){
                     },
                     id: 1
                 },
-                result: `select "book"."id" from "public"."book" as "book"
-                            inner join "public"."page" as "book_pages" on "book"."id" = "book_pages"."bookid"
-                         where (("book_pages"."number" > 1)
-                         and "book"."id" = 1)
-                         group by "book"."id"`,
+                result: `select \`book\`.\`id\` from \`Book\` as \`book\`
+                            inner join \`Page\` as \`book_pages\` on \`book\`.\`id\` = \`book_pages\`.\`bookid\`
+                         where ((\`book_pages\`.\`number\` > 1)
+                         and \`book\`.\`id\` = 1)
+                         group by \`book\`.\`id\``,
             },
             {
                 message: 'less than and greater than in or blocks',
@@ -366,10 +369,10 @@ describe('The SearchQueryBuilder', function(){
                     },
                     id   : 1
                 },
-                result : `select "book"."id" from "public"."book" as "book"
-                                inner join "public"."page" as "book_pages" on "book"."id" = "book_pages"."bookid"
-                            where (("book_pages"."number" < 5 or "book_pages"."number" > 10) and "book"."id" = 1)
-                            group by "book"."id"`,
+                result : `select \`book\`.\`id\` from \`Book\` as \`book\`
+                                inner join \`Page\` as \`book_pages\` on \`book\`.\`id\` = \`book_pages\`.\`bookid\`
+                            where ((\`book_pages\`.\`number\` < 5 or \`book_pages\`.\`number\` > 10) and \`book\`.\`id\` = 1)
+                            group by \`book\`.\`id\``,
             },
         ], this);
 
@@ -390,7 +393,7 @@ describe('The SearchQueryBuilder', function(){
         const message = testCase.message;
 
         it(message, function(){
-            const filter = { where: testCase.where };
+            const filter = { where: testCase.where, order: testCase.order };
             const expectedResult = testCase.result;
 
             const query = this.builder.buildQuery(model, filter);
