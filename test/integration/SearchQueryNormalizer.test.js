@@ -1,9 +1,12 @@
 const { expect } = require('chai');
 
+const SetupIntegration = require('../support/setup/integration');
 const SearchQueryNormalizer = require('../../src/SearchQueryNormalizer');
 const { UnknownPropertyError } = require('../../src/error');
 
 describe('The Search Query Normalizer', () => {
+
+    SetupIntegration();
 
     before('basic setup', function() {
         this.model = 'Book';

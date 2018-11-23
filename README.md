@@ -59,4 +59,3 @@ Check the `package.json` to see how to execute tests:
   - **watch tests during development:** `npm run test:watch` (uses mocha's `--watch` option)
   - **linting:** `npm run lint`
 
-To launch test for mysql connector use `NODE_ENV=mysql_test` 

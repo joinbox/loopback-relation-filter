@@ -1,8 +1,11 @@
 const { expect } = require('chai');
 
+const SetupIntegration = require('../support/setup/integration');
 const createAndLinkBookData = require('../support/fixtures/createAndLinkBookData');
 
 describe('The loopback-search-component', () => {
+
+    SetupIntegration();
 
     before(function() {
         this.Book = this.models.Book;

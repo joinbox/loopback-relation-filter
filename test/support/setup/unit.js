@@ -1,14 +1,20 @@
 const path = require('path');
 
 const Microservice = require('@joinbox/loopback-microservice');
+const Loopback = require('loopback');
+const LoopbackRegistry = require('loopback/lib/registry');
 
-before(async function() {
+module.exports = function({ env = process.env.NODE_ENV } = {}) {
+  before(async function() {
     const appRootDir = path.resolve(__dirname, '../server');
-    const env = process.env.NODE_ENV || 'test';
     const options = {
-        appRootDir,
-        env,
+      appRootDir,
+      env,
     };
+    // Reset the inside registry of loopback
+    // TODO integrate this in Microservice lib ?
+    Loopback.registry = new LoopbackRegistry();
     this.service = await Microservice.boot(options);
     this.models = this.service.app.models;
-});
+  });
+}

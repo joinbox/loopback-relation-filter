@@ -1,5 +1,6 @@
 const { expect } = require('chai');
 
+const InitMicroService = require('../support/setup/unit');
 const ModelWrapper = require('../../src/ModelWrapper');
 
 class MockModel {
@@ -19,6 +20,8 @@ class MockModel {
 }
 
 describe('The ModelWrapper class', function(){
+
+    InitMicroService();
 
     describe('ModelWrapper.constructor(model, alias)', function(){
         it('can be instantiated by passing a model and an optional alias', function(){

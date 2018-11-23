@@ -1,9 +1,11 @@
 const { expect } = require('chai');
 
+const InitMicroService = require('../support/setup/unit');
 const TableAliasProvider = require('../../src/TableAliasProvider');
 
 describe('The TableAliasProvider Class', () => {
 
+    InitMicroService();
 
     beforeEach(function(){
         this.provider = new TableAliasProvider();
