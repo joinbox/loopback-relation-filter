@@ -371,13 +371,17 @@ module.exports = class SearchQueryBuilder {
         const tableName = rootModel.getAliasedTable();
 
         const basicSelect = builder(tableName).select(id).groupBy(id);
-        if (!filter.where && !filter.order) {
-            return basicSelect;
-        }
 
         const where = this.normalizer.normalizeQuery(rootModel.getName(), filter.where || {});
         const order = this.normalizer.normalizeOrder(rootModel.getName(), filter.order);
-        return this.queryRelationsAndProperties(basicSelect, rootModel, aliasProvider, where, order);
+        const selectWithFilterApplied = this.queryRelationsAndProperties(basicSelect, rootModel, aliasProvider, where, order);
+        if(filter.limit){
+          selectWithFilterApplied.limit(filter.limit);
+        }
+        if(filter.skip){
+          selectWithFilterApplied.offset(filter.skip);
+        }
+        return selectWithFilterApplied;
     }
 
     /**

@@ -413,6 +413,28 @@ describe('The SearchQueryBuilder mysql', function(){
 
     });
 
+    describe('supports skip, limit', function(){
+
+      runCases([
+        {
+          message: 'Simple limit',
+          limit: 1,
+          result: `select \`book\`.\`id\` from \`Book\` as \`book\`
+            group by \`book\`.\`id\`
+            limit 1`,
+        },
+        {
+          message: 'Simple skip',
+          limit: 10,
+          skip: 1,
+          result: `select \`book\`.\`id\` from \`Book\` as \`book\`
+          group by \`book\`.\`id\`
+          limit 10 offset 1`,
+        },
+      ], this);
+
+    });
+
     function normalizeExpectedResult(queryString){
         return queryString.replace(/\s{2,}/g, ' ');
     }
@@ -428,7 +450,12 @@ describe('The SearchQueryBuilder mysql', function(){
         const message = testCase.message;
 
         it(message, function(){
-            const filter = { where: testCase.where, order: testCase.order };
+            const filter = {
+              where: testCase.where,
+              order: testCase.order,
+              limit: testCase.limit,
+              skip: testCase.skip
+            };
             const expectedResult = testCase.result;
 
             const query = this.builder.buildQuery(model, filter);

@@ -553,6 +553,29 @@ describe('The loopback-search-component', () => {
 
     });
 
+    describe('the component allows skip, limit', function(){
+
+      it('the component allows simple skip and limit', async function() {
+
+        const query = {
+          include: ['publisher'],
+          order: 'title DESC',
+          limit: 2,
+          skip: 1,
+        };
+        // this will usually return 5 books
+        const books = await this.apiClient.get('/books')
+        .query({ filter: JSON.stringify(query) })
+        .then(result => result.body);
+
+        expect(books).to.have.length(2);
+        expect(books[0]).to.have.property('title', 'The great gatsby');
+        expect(books[1]).to.have.property('title', 'Harry Potter');
+
+      });
+
+    });
+
     describe('loopback-search-component configuration', function(){
         // this test is for documentation
         it('preserveColumnCase: Can be set in the component configuration. Most tests in this suite' +

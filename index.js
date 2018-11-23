@@ -36,18 +36,16 @@ module.exports.error = error;
  */
 function extendedFindQuery(model, models, { rejectUnknownProperties = false, preserveColumnCase = true } = {}) {
     return function(ctx, next) {
-        const originalWhere = getWhereFilter(ctx);
-        const originalOrder = getOrderFilter(ctx);
-        if (!originalWhere && !originalOrder) {
+        const originalFilter = getFilter(ctx);
+        if (!originalFilter) {
             next();
         } else {
             const builder = new SearchQueryBuilder(models, { rejectUnknownProperties, preserveColumnCase });
-            const query = Object.assign({}, originalWhere);
-            const order = originalOrder;
+            const filter = Object.assign({}, originalFilter);
 
             try {
                 const idName = model.getIdName();
-                const databaseQuery = builder.buildQuery(model.modelName, { where: query, order: order });
+                const databaseQuery = builder.buildQuery(model.modelName, filter);
                 const sqlString = databaseQuery.toString();
 
                 model.dataSource.connector.execute(sqlString, (err, result) => {
@@ -66,8 +64,11 @@ function extendedFindQuery(model, models, { rejectUnknownProperties = false, pre
                         // Therefore we remove all the other constrains since they could lead to
                         // contradicting statements!
                         ctx.query.where = {[idName]: { inq: resultIds }};
-                        // Remove the order from the original query
+                        // Remove the order,limit,skip from the original query
                         delete ctx.query.order;
+                        delete ctx.query.limit;
+                        delete ctx.query.skip;
+                        delete ctx.query.offset;
                         next();
                     }
                 });
@@ -113,20 +114,9 @@ function extendedFindQueryHandleOrder(model, models, { rejectUnknownProperties =
  * @param context the loopback request context
  * @returns {null}
  */
-function getWhereFilter(context = {}) {
-    const query = context.query || {};
-    return query.where;
-}
-
-/**
- * Returns the order filter (either sent via API or remote method invocation).
- *
- * @param context the loopback request context
- * @returns {*}
- */
-function getOrderFilter(context = {}) {
-    const query = context.query || {};
-    return query.order;
+function getFilter(context = {}) {
+    const query = context.query;
+    return query;
 }
 
 /**
