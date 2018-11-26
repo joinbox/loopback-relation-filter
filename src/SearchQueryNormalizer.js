@@ -17,6 +17,7 @@ const defaultSupportedOpperators = [
     'inq',
     'nin',
     'between',
+    'regexp',
 ];
 
 /**

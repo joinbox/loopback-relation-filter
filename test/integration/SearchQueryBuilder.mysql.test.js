@@ -117,8 +117,8 @@ describe('The SearchQueryBuilder mysql', function(){
                         inner join \`AuthorBook\` as \`book_authorbook_authors\` on \`book\`.\`id\` = \`book_authorbook_authors\`.\`bookid\`
                         inner join \`Author\` as \`book_authors\` on \`book_authorbook_authors\`.\`authorid\` = \`book_authors\`.\`id\`
                         inner join \`Page\` as \`book_pages\` on \`book\`.\`id\` = \`book_pages\`.\`bookid\`
-                    where ((\`book_authors\`.\`firstname\` like 'Michael'
-                            and \`book_authors\`.\`lastname\` like 'R%')
+                    where ((\`book_authors\`.\`firstname\` like binary 'Michael'
+                            and \`book_authors\`.\`lastname\` like binary 'R%')
                         and (\`book_pages\`.\`number\` > 2
                             and \`book_pages\`.\`number\` != NULL))
                     group by \`book\`.\`id\``,
@@ -139,7 +139,7 @@ describe('The SearchQueryBuilder mysql', function(){
             result: `select \`book\`.\`id\` from \`Book\` as \`book\`
                         inner join \`AuthorBook\` as \`book_authorbook_authors\` on \`book\`.\`id\` = \`book_authorbook_authors\`.\`bookid\`
                         inner join \`Author\` as \`book_authors\` on \`book_authorbook_authors\`.\`authorid\` = \`book_authors\`.\`id\`
-                    where ((\`book_authors\`.\`firstname\` like 'Michael'))
+                    where ((\`book_authors\`.\`firstname\` like binary 'Michael'))
                     group by \`book\`.\`id\``,
         },
         {
@@ -215,7 +215,7 @@ describe('The SearchQueryBuilder mysql', function(){
                     on \`author_authorbook_books\`.\`bookid\` = \`author_books\`.\`id\`
                 inner join \`Publisher\` as \`book_publisher\`
                     on \`author_books\`.\`publisherid\` = \`book_publisher\`.\`id\`
-            where (\`author\`.\`lastname\` like 'Orw%' and ((\`book_publisher\`.\`name\` = 'NAL'))) group by \`author\`.\`id\``,
+            where (\`author\`.\`lastname\` like binary 'Orw%' and ((\`book_publisher\`.\`name\` = 'NAL'))) group by \`author\`.\`id\``,
         },
     ];
 
@@ -265,22 +265,22 @@ describe('The SearchQueryBuilder mysql', function(){
             {
                 message: 'like',
                 where: { id: { like: '%2' }},
-                result: createResult('like', '\'%2\''),
+                result: createResult('like binary', '\'%2\''),
             },
             {
                 message: 'ilike',
                 where: { id: { ilike: '%2' }},
-                result: createResult('ilike', '\'%2\''),
+                result: createResult('like', '\'%2\''),
             },
             {
                 message: 'nlike',
                 where: { id: { nlike: '%2' }},
-                result: createResult('not like', '\'%2\''),
+                result: createResult('not like binary', '\'%2\''),
             },
             {
                 message: 'nilike',
                 where: { id: { nilike: '%2' }},
-                result: createResult('not ilike', '\'%2\''),
+                result: createResult('not like', '\'%2\''),
             },
             {
                 message: 'between',
@@ -297,6 +297,18 @@ describe('The SearchQueryBuilder mysql', function(){
                 where: { id: { nin: [1, 10, 100] }},
                 result: createResult('not in', '(1, 10, 100)'),
             },
+            {
+              message: 'regexp',
+              where: { title: { regexp: /^The/ }},
+              result: `select \`book\`.\`id\` from \`Book\` as \`book\`
+                        where (\`book\`.\`title\` regexp binary '^The') group by \`book\`.\`id\``,
+            },
+            {
+              message: 'iregexp',
+              where: { title: { regexp: /^the/i }},
+              result: `select \`book\`.\`id\` from \`Book\` as \`book\`
+                        where (\`book\`.\`title\` regexp '^the') group by \`book\`.\`id\``,
+            },
         ];
 
         runCases(cases, this);
@@ -311,14 +323,6 @@ describe('The SearchQueryBuilder mysql', function(){
                     }
                 });
             }).to.throw;
-        });
-
-        it.skip('regexp: (not supported yet)', function(){
-            runCase.call(this, {
-                where: { id: { regexp: [0, 5, 10] }},
-                message: 'regexp',
-                result: ''
-            });
         });
 
         it.skip('near: (not supported yet)', function(){

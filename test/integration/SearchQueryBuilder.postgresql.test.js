@@ -297,6 +297,18 @@ describe('The SearchQueryBuilder postgresql', function(){
                 where: { id: { nin: [1, 10, 100] }},
                 result: createResult('not in', '(1, 10, 100)'),
             },
+            {
+              message: 'regexp',
+              where: { title: { regexp: /^The/ }},
+              result: `select "book"."id" from "public"."book" as "book"
+                        where ("book"."title" ~ '^The') group by "book"."id"`,
+            },
+            {
+              message: 'iregexp',
+              where: { title: { regexp: /^the/i }},
+              result: `select "book"."id" from "public"."book" as "book"
+                        where ("book"."title" ~* '^the') group by "book"."id"`,
+            },
         ];
 
         runCases(cases, this);
@@ -311,14 +323,6 @@ describe('The SearchQueryBuilder postgresql', function(){
                     }
                 });
             }).to.throw;
-        });
-
-        it.skip("regexp: (not supported yet)", function(){
-            runCase.call(this, {
-                where: { id: { regexp: [0, 5, 10] }},
-                message: 'regexp',
-                result: ''
-            });
         });
 
         it.skip("near: (not supported yet)", function(){

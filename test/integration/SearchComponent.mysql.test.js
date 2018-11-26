@@ -25,7 +25,7 @@ describe('The loopback-search-component mysql', () => {
                 authors: {
                     firstName: 'George',
                     lastName: {
-                        like: 'orwe%',
+                        ilike: 'orwe%',
                     },
                 },
             },
@@ -56,7 +56,7 @@ describe('The loopback-search-component mysql', () => {
                 authors: {
                     firstName: 'George',
                     lastName: {
-                        like: 'orwe%',
+                        ilike: 'orwe%',
                     },
                 },
             },
@@ -378,7 +378,7 @@ describe('The loopback-search-component mysql', () => {
                 books: {
                     publisher: {
                         name: {
-                            like: 'nal',
+                            ilike: 'nal',
                         },
                     }
                 },
@@ -469,6 +469,30 @@ describe('The loopback-search-component mysql', () => {
             .then(result => result.body);
 
         expect(authors).to.have.length(1);
+    });
+
+    it('the component allows filtering with regexp operator', async function() {
+
+      const query = {
+        where: {
+          title: {
+            regexp: '/^The/',
+          },
+        },
+        include: ['authors'],
+      };
+      // this will usually return 5 books
+      const books = await this.apiClient.get('/books')
+      .query({ filter: JSON.stringify(query) })
+      .then(result => result.body);
+
+      expect(books).to.have.length(2);
+
+      const book1 = books.find(book => book.title === 'The great gatsby');
+      const book2 = books.find(book => book.title === 'The hunger games');
+
+      expect(book1).to.be.ok;
+      expect(book2).to.be.ok;
     });
 
     describe('the component allows ordering', function(){

@@ -7,6 +7,35 @@ const SearchQueryNormalizer = require('./SearchQueryNormalizer');
 
 const { UnknownOperatorError }= require('./error');
 
+const operatorMaps = {
+  postgresql: {
+    neq: '!=',
+    gt: '>',
+    lt: '<',
+    gte: '>=',
+    lte: '<=',
+    like: 'like',
+    ilike: 'ilike',
+    nlike: 'not like',
+    nilike: 'not ilike',
+    regexp: '~',
+    iregexp: '~*',
+  },
+  mysql: {
+    neq: '!=',
+    gt: '>',
+    lt: '<',
+    gte: '>=',
+    lte: '<=',
+    like: 'like binary',
+    ilike: 'like',
+    nlike: 'not like binary',
+    nilike: 'not like',
+    regexp: 'regexp binary',
+    iregexp: 'regexp',
+  }
+};
+
 /**
  * @todo: remove the state by instantiating a new table alias provider
  * @todo: remove all methods that should not belong to the interface (i.e. only preserve buildQuery or build)
@@ -38,6 +67,7 @@ module.exports = class SearchQueryBuilder {
             'inq',
             'nin',
             'between',
+            'regexp',
         ];
         const options = {
             supportedOperators: this.supportedOperators,
@@ -49,6 +79,11 @@ module.exports = class SearchQueryBuilder {
     getQueryBuilder(wrappedModel) {
         const client = this.getClientName(wrappedModel);
         return knex({ client });
+    }
+
+    getOperatorMap(wrappedModel) {
+        const connectorName = wrappedModel.getConnectorName();
+        return operatorMaps[connectorName];
     }
 
     getClientName(model) {
@@ -115,7 +150,7 @@ module.exports = class SearchQueryBuilder {
                     property: rootModel.getColumnName(propertyName, opts),
                     value: query,
                 };
-                this.applyPropertyFilter(propertyFilter, subQueryBuilder);
+                this.applyPropertyFilter(propertyFilter, subQueryBuilder, rootModel);
             }
         });
     }
@@ -294,24 +329,15 @@ module.exports = class SearchQueryBuilder {
      *          comparison operator and create a where statement of the form
      *          `property operator comparedValue`
      * @param {KnexQueryBuilder} the knex query builder
+     * @param {WrappedModel} the model to query
      *
      * @return {KnexQueryBuilder} the knex query builder
      */
-    applyPropertyFilter({ property, value }, builder) {
+    applyPropertyFilter({ property, value }, builder, rootModel) {
 
         if (!value) return;
-        const operatorMap = {
-            neq: '!=',
-            gt: '>',
-            lt: '<',
-            gte: '>=',
-            lte: '<=',
-            like: 'like',
-            ilike: 'ilike',
-            nlike: 'not like',
-            nilike: 'not ilike',
 
-        };
+        const operatorMap = this.getOperatorMap(rootModel);
         const operator = this.supportedOperators.find(op => {
             return Object.prototype.hasOwnProperty.call(value, op);
         });
@@ -331,7 +357,7 @@ module.exports = class SearchQueryBuilder {
             case 'nlike':
             case 'nilike': {
                 const mappedOperator = operatorMap[operator];
-                return builder.where(property, mappedOperator, content);
+                return builder.whereRaw(`:property: ${mappedOperator} :value`, {property, value:content});
             }
             case 'between':
                 return builder.whereBetween(property, content);
@@ -339,6 +365,10 @@ module.exports = class SearchQueryBuilder {
                 return builder.whereIn(property, content);
             case 'nin':
                 return builder.whereNotIn(property, content);
+            case 'regexp': {
+                const mappedOperator = operatorMap[(content.ignoreCase ? 'i' : '') + operator];
+                return builder.whereRaw(`:property: ${mappedOperator} :value`, {property, value: content.source});
+            }
             default:
                 const valueString = JSON.stringify(value);
                 const msg = `Unknown operator encountered when comparing ${property} to ${valueString}`;
