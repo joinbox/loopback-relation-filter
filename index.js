@@ -34,13 +34,13 @@ module.exports.error = error;
  * @param models the loopback models object
  * @returns {Function}
  */
-function extendedFindQuery(model, models, { rejectUnknownProperties = false, preserveColumnCase = true } = {}) {
+function extendedFindQuery(model, models, { rejectUnknownProperties = false, preserveColumnCase = true, joinMethod = 'inner' } = {}) {
     return function(ctx, next) {
         const originalFilter = getFilter(ctx);
         if (!originalFilter) {
             next();
         } else {
-            const builder = new SearchQueryBuilder(models, { rejectUnknownProperties, preserveColumnCase });
+            const builder = new SearchQueryBuilder(models, { rejectUnknownProperties, preserveColumnCase, joinMethod });
             const filter = Object.assign({}, originalFilter);
 
             try {

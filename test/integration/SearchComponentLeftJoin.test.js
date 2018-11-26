@@ -3,9 +3,9 @@ const { expect } = require('chai');
 const SetupIntegration = require('../support/setup/integration');
 const createAndLinkBookData = require('../support/fixtures/createAndLinkBookData');
 
-describe('The loopback-search-component postgresql', () => {
+describe('The loopback-search-component', () => {
 
-    SetupIntegration();
+    SetupIntegration({ env: 'leftjoin_test' });
 
     before(function() {
         this.Book = this.models.Book;
@@ -505,7 +505,7 @@ describe('The loopback-search-component postgresql', () => {
             .query({ filter: JSON.stringify(query) })
             .then(result => result.body);
 
-        expect(books).to.have.length(3);
+        expect(books).to.have.length(5);
 
         expect(books[0]).to.have.property('title', 'Animal Farm');
         expect(books[1]).to.have.property('title', 'The great gatsby');
@@ -524,12 +524,13 @@ describe('The loopback-search-component postgresql', () => {
         .query({ filter: JSON.stringify(query) })
         .then(result => result.body);
 
-        expect(books).to.have.length(4);
+        expect(books).to.have.length(5);
 
         expect(books[0]).to.have.property('title', 'Harry Potter');
         expect(books[1]).to.have.property('title', 'The great gatsby');
         expect(books[2]).to.have.property('title', 'Animal Farm');
         expect(books[3]).to.have.property('title', '1984');
+        expect(books[4]).to.have.property('title', 'The hunger games');
 
       });
 
@@ -544,12 +545,13 @@ describe('The loopback-search-component postgresql', () => {
         .query({ filter: JSON.stringify(query) })
         .then(result => result.body);
 
-        expect(books).to.have.length(4);
+        expect(books).to.have.length(5);
 
         expect(books[0]).to.have.property('title', 'Harry Potter');
         expect(books[1]).to.have.property('title', 'The great gatsby');
         expect(books[2]).to.have.property('title', '1984');
         expect(books[3]).to.have.property('title', 'Animal Farm');
+        expect(books[4]).to.have.property('title', 'The hunger games');
 
       });
 

@@ -3,9 +3,9 @@ const { expect } = require('chai');
 const SetupIntegration = require('../support/setup/integration');
 const createAndLinkBookData = require('../support/fixtures/createAndLinkBookData');
 
-describe('The loopback-search-component postgresql', () => {
+describe('The loopback-search-component mysql', () => {
 
-    SetupIntegration();
+    SetupIntegration({ env: 'mysql_test' });
 
     before(function() {
         this.Book = this.models.Book;
@@ -25,7 +25,7 @@ describe('The loopback-search-component postgresql', () => {
                 authors: {
                     firstName: 'George',
                     lastName: {
-                        ilike: 'orwe%',
+                        like: 'orwe%',
                     },
                 },
             },
@@ -56,7 +56,7 @@ describe('The loopback-search-component postgresql', () => {
                 authors: {
                     firstName: 'George',
                     lastName: {
-                        ilike: 'orwe%',
+                        like: 'orwe%',
                     },
                 },
             },
@@ -378,7 +378,7 @@ describe('The loopback-search-component postgresql', () => {
                 books: {
                     publisher: {
                         name: {
-                            ilike: 'nal',
+                            like: 'nal',
                         },
                     }
                 },

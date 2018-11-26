@@ -447,6 +447,28 @@ describe('The SearchQueryBuilder postgresql', function(){
 
     });
 
+    describe('can configure join operation (inner,left,right)', function(){
+
+      // TODO avoid re-doing setup, need sub describe() for spliting this tests
+      beforeEach('setup query builder with left join', function(){
+        // set the preserveColumnCase option to false, since the postgres connector seems to
+        // do weird conversions now and then
+        // @see: https://github.com/strongloop/loopback-connector-postgresql/issues/38
+        this.builder = new SearchQueryBuilder(this.models, {preserveColumnCase: false, joinMethod: 'left'});
+      });
+
+      runCases([
+        {
+          message: 'Simple ordering with left join',
+          order: 'publisher.name ASC',
+          result: `select "book"."id", min("book_publisher"."name") as "book_publisher_name" from "public"."book" as "book"
+            left join "public"."publisher" as "book_publisher" on "book"."publisherid" = "book_publisher"."id"
+            group by "book"."id" order by "book_publisher_name" asc`,
+        },
+      ], this);
+
+    });
+
     function normalizeExpectedResult(queryString){
         return queryString.replace(/\s{2,}/g, ' ');
     }

@@ -16,9 +16,10 @@ const { UnknownOperatorError }= require('./error');
 
 module.exports = class SearchQueryBuilder {
 
-    constructor(models, { rejectUnknownProperties = false, preserveColumnCase = true } = {}) {
+    constructor(models, { rejectUnknownProperties = false, preserveColumnCase = true, joinMethod = 'inner' } = {}) {
         this.models = models;
         this.preserveColumnCase = preserveColumnCase;
+        this.joinMethod = joinMethod;
         this._supportedClients = {
             postgresql: 'pg',
             mysql: 'mysql'
@@ -62,7 +63,12 @@ module.exports = class SearchQueryBuilder {
         // 1. iterate the query and collect all joins
         const joins = this.getAllJoins(rootModel, query, order, joinAliasProvider);
         joins.forEach(({ table, keyFrom, keyTo }) => {
-            builder.join(table, { [keyFrom]: keyTo });
+            if (this.joinMethod === 'left') {
+                builder.leftJoin(table, { [keyFrom]: keyTo });
+            } else {
+                builder.join(table, { [keyFrom]: keyTo });
+            }
+
         });
         // 2. iterate the query and apply all filters (we need to keep track of the aliases the
         // same way we did before in the joins).
