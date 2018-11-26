@@ -138,6 +138,7 @@ module.exports = class SearchQueryBuilder {
             }
             if (rootModel.isProperty(propertyName)) {
                 const propertyOrder = {
+                    orderAlias: rootModel.alias + '_' + propertyName,
                     property: rootModel.getColumnName(propertyName, options),
                     direction: subOrder,
                 };
@@ -344,14 +345,21 @@ module.exports = class SearchQueryBuilder {
     /**
      * Appends a order clause to the query passed by builder.
      *
-     * @param   {property, direction} Whereas property is the fully resolved name of the property
+     * @param   {orderAlias, property, direction} Whereas orderAlias is the given unique alias for this order clause
+     *          property is the fully resolved name of the property
      *          and direction should be asc or desc
      * @param {KnexQueryBuilder} the knex query builder
      *
      * @return {KnexQueryBuilder} the knex query builder
      */
-    applyPropertyOrder({ property, direction }, builder) {
-      return builder.orderBy(property, direction);
+    applyPropertyOrder({ orderAlias, property, direction }, builder) {
+      if(direction === 'asc'){
+        builder.min({ [orderAlias]: property });
+      } else {
+        builder.max({ [orderAlias]: property });
+      }
+
+      return builder.orderBy(orderAlias, direction);
     }
 
     /**

@@ -384,31 +384,52 @@ describe('The SearchQueryBuilder mysql', function(){
         {
           message: 'Simple ordering on belongsTo',
           order: 'publisher.name ASC',
-          result: `select \`book\`.\`id\` from \`Book\` as \`book\`
-          inner join \`Publisher\` as \`book_publisher\` on \`book\`.\`publisherid\` = \`book_publisher\`.\`id\`
-          group by \`book\`.\`id\`
-          order by \`book_publisher\`.\`name\` asc`,
+          result: `select \`book\`.\`id\`, min(\`book_publisher\`.\`name\`) as \`book_publisher_name\`  from \`Book\` as \`book\`
+            inner join \`Publisher\` as \`book_publisher\` on \`book\`.\`publisherid\` = \`book_publisher\`.\`id\`
+            group by \`book\`.\`id\`
+            order by \`book_publisher_name\` asc`,
         },
         {
           message: 'Complexe ordering on belongsTo on belongsTo',
           model: 'Page',
           order: 'book.publisher.name ASC',
-          result: `select \`page\`.\`id\` from \`Page\` as \`page\`
-          inner join \`Book\` as \`page_book\` on \`page\`.\`bookid\` = \`page_book\`.\`id\`
-          inner join \`Publisher\` as \`book_publisher\` on \`page_book\`.\`publisherid\` = \`book_publisher\`.\`id\`
-          group by \`page\`.\`id\`
-          order by \`book_publisher\`.\`name\` asc`,
+          result: `select \`page\`.\`id\`, min(\`book_publisher\`.\`name\`) as \`book_publisher_name\` from \`Page\` as \`page\`
+            inner join \`Book\` as \`page_book\` on \`page\`.\`bookid\` = \`page_book\`.\`id\`
+            inner join \`Publisher\` as \`book_publisher\` on \`page_book\`.\`publisherid\` = \`book_publisher\`.\`id\`
+            group by \`page\`.\`id\`
+            order by \`book_publisher_name\` asc`,
         },
         {
           message: 'Multiple complexe ordering',
           model: 'Page',
           order: ['book.publisher.name ASC', 'number DESC'],
-          result: `select \`page\`.\`id\` from \`Page\` as \`page\`
-          inner join \`Book\` as \`page_book\` on \`page\`.\`bookid\` = \`page_book\`.\`id\`
-          inner join \`Publisher\` as \`book_publisher\` on \`page_book\`.\`publisherid\` = \`book_publisher\`.\`id\`
-          group by \`page\`.\`id\`
-          order by \`book_publisher\`.\`name\` asc, \`page\`.\`number\` desc`,
-        }
+          result: `select \`page\`.\`id\`, min(\`book_publisher\`.\`name\`) as \`book_publisher_name\`, max(\`page\`.\`number\`) as \`page_number\`
+            from \`Page\` as \`page\`
+            inner join \`Book\` as \`page_book\` on \`page\`.\`bookid\` = \`page_book\`.\`id\`
+            inner join \`Publisher\` as \`book_publisher\` on \`page_book\`.\`publisherid\` = \`book_publisher\`.\`id\`
+            group by \`page\`.\`id\`
+            order by \`book_publisher_name\` asc, \`page_number\` desc`,
+        },
+        {
+          message: 'Multiple ordering over hasAndBelongsToMany asc',
+          model: 'Book',
+          order: ['authors.lastName ASC'],
+          result: `select \`book\`.\`id\`, min(\`book_authors\`.\`lastname\`) as \`book_authors_lastName\` from \`Book\` as \`book\`
+            inner join \`AuthorBook\` as \`book_authorbook_authors\` on \`book\`.\`id\` = \`book_authorbook_authors\`.\`bookid\`
+            inner join \`Author\` as \`book_authors\` on \`book_authorbook_authors\`.\`authorid\` = \`book_authors\`.\`id\`
+            group by \`book\`.\`id\`
+            order by \`book_authors_lastName\` asc`,
+        },
+        {
+          message: 'Multiple ordering over hasAndBelongsToMany desc',
+          model: 'Book',
+          order: ['authors.lastName DESC'],
+          result: `select \`book\`.\`id\`, max(\`book_authors\`.\`lastname\`) as \`book_authors_lastName\` from \`Book\` as \`book\`
+            inner join \`AuthorBook\` as \`book_authorbook_authors\` on \`book\`.\`id\` = \`book_authorbook_authors\`.\`bookid\`
+            inner join \`Author\` as \`book_authors\` on \`book_authorbook_authors\`.\`authorid\` = \`book_authors\`.\`id\`
+            group by \`book\`.\`id\`
+            order by \`book_authors_lastName\` desc`,
+        },
       ], this);
 
     });

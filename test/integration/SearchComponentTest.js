@@ -513,25 +513,6 @@ describe('The loopback-search-component', () => {
 
       });
 
-      it('the component allows ordering over hasAndBelongsToMany related model property', async function() {
-
-        const query = {
-          include: ['publisher'],
-          order: 'authors.lastName ASC'
-        };
-        // this will usually return 5 books
-        const books = await this.apiClient.get('/books')
-        .query({ filter: JSON.stringify(query) })
-        .then(result => result.body);
-
-        expect(books).to.have.length(3);
-
-        expect(books[0]).to.have.property('title', 'The great gatsby');
-        expect(books[1]).to.have.property('title', '1984');
-        expect(books[2]).to.have.property('title', 'Animal Farm');
-
-      });
-
       it('the component allows multiple ordering clauses', async function() {
 
         const query = {
@@ -543,11 +524,32 @@ describe('The loopback-search-component', () => {
         .query({ filter: JSON.stringify(query) })
         .then(result => result.body);
 
-        expect(books).to.have.length(3);
+        expect(books).to.have.length(4);
 
-        expect(books[0]).to.have.property('title', 'The great gatsby');
-        expect(books[1]).to.have.property('title', 'Animal Farm');
+        expect(books[0]).to.have.property('title', 'Harry Potter');
+        expect(books[1]).to.have.property('title', 'The great gatsby');
+        expect(books[2]).to.have.property('title', 'Animal Farm');
+        expect(books[3]).to.have.property('title', '1984');
+
+      });
+
+      it('the component allows multiple ordering clauses 2', async function() {
+
+        const query = {
+          include: ['publisher'],
+          order: ['authors.lastName ASC', 'title ASC']
+        };
+        // this will usually return 5 books
+        const books = await this.apiClient.get('/books')
+        .query({ filter: JSON.stringify(query) })
+        .then(result => result.body);
+
+        expect(books).to.have.length(4);
+
+        expect(books[0]).to.have.property('title', 'Harry Potter');
+        expect(books[1]).to.have.property('title', 'The great gatsby');
         expect(books[2]).to.have.property('title', '1984');
+        expect(books[3]).to.have.property('title', 'Animal Farm');
 
       });
 

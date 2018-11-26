@@ -46,7 +46,7 @@
     "strong-error-handler": "^2.3.0"
   },
   "dependencies": {
-    "knex": "^0.14.2",
-    "@joinbox/loopback-microservice": "^0.1.0"
+    "@joinbox/loopback-microservice": "^0.1.0",
+    "knex": "^0.15.2"
   }
 }

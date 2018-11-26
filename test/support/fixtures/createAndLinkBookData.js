@@ -57,9 +57,16 @@ class BookDataCreator {
         const fitzgerald = authorMap.Fitzgerald;
         fitzgerald.books.add(bookMap['The great gatsby']);
 
+        const collins = authorMap.Collins;
+        const rowling = authorMap.Rowling;
+        collins.books.add(bookMap['Harry Potter']);
+        rowling.books.add(bookMap['Harry Potter']);
+
         return Promise.all([
             orwell.save(),
             fitzgerald.save(),
+            collins.save(),
+            rowling.save(),
         ]);
     }
 
