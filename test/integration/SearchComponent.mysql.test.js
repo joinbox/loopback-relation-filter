@@ -495,6 +495,24 @@ describe('The loopback-search-component mysql', () => {
       expect(book2).to.be.ok;
     });
 
+    it('the component allows filtering over property with custom columnName', async function() {
+
+      const query = {
+        where: {
+          publisher: {
+            address: 'Paris',
+          },
+        },
+      };
+      // this will usually return 5 books
+      const books = await this.apiClient.get('/books')
+      .query({ filter: JSON.stringify(query) })
+      .then(result => result.body);
+
+      expect(books).to.have.length(1);
+      expect(books[0]).to.have.property('title', 'The great gatsby');
+    });
+
     describe('the component allows ordering', function(){
 
       it('the component allows ordering over main model', async function() {
