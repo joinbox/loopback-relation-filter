@@ -49,6 +49,19 @@ describe('The Search Query Normalizer', () => {
         expect(newWhere).to.have.property('and').that.has.length(2);
     });
 
+    it('cast regexp operator filter', function() {
+        const newWhere = this.normalize('Book', {
+            authors: {
+                firstName: {
+                  regexp: '/Michael/'
+                },
+            },
+        });
+
+        expect(newWhere).to.have.property('and').that.has.length(1)
+          .to.have.nested.property('[0].authors.and[0].firstName.regexp')
+          .to.be.an.instanceof(RegExp);
+    });
 
     it('throws an error if an unknown property of a model is encountered and ' +
         'the corresponding option is set to true', function() {

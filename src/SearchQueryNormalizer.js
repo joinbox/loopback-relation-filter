@@ -1,6 +1,7 @@
 
 const ModelWrapper = require('./ModelWrapper');
 const error = require('./error');
+const LoopbackDaoUtils = require('loopback-datasource-juggler/lib/utils');
 const _ = require('lodash');
 
 const defaultSupportedOpperators = [
@@ -145,6 +146,9 @@ module.exports = class SearchQueryNormalizer {
 
     normalizeProperty(rootModel, property, query) {
         const comparison = this.hasSupportedOperator(query) ? query : { '=': query };
+        if (comparison.regexp) {
+          comparison.regexp = LoopbackDaoUtils.toRegExp(comparison.regexp);
+        }
         return {
             [property]: comparison,
         };
