@@ -21,6 +21,16 @@ describe('The SearchQueryBuilder mysql', function(){
             result: 'select \`book\`.\`id\` from \`Book\` as \`book\` group by \`book\`.\`id\`'
         },
         {
+          message: 'creates a base query with root where clauses',
+          where: {
+            title: { like: 'A%'},
+            publisherId: 3
+          },
+          result: `select \`book\`.\`id\` from \`Book\` as \`book\`
+            where (\`book\`.\`title\` like binary 'A%' and \`book\`.\`publisherid\` = 3)
+            group by \`book\`.\`id\``
+        },
+        {
             message: 'joins belongsTo relations and applies where clauses',
             where: {
                 publisher: {
@@ -178,6 +188,26 @@ describe('The SearchQueryBuilder mysql', function(){
                     where (\`book\`.\`title\` = 'Animal Farm'
                         or (\`book_authors\`.\`firstname\` = 'Scott'))
                     group by \`book\`.\`id\``,
+        },
+        {
+          message: 'properly respects or clauses with and clauses at root',
+          where: {
+            and: [
+              {
+                title: { like: 'Ani%' },
+              },
+              {
+                or: [
+                  { publisherId: 1 },
+                  { mainAuthorId: 1 },
+                ],
+              }
+            ],
+          },
+          result: `select \`book\`.\`id\` from \`Book\` as \`book\`
+            where (\`book\`.\`title\` like binary 'Ani%'
+            and (\`book\`.\`publisherid\` = 1 or \`book\`.\`mainauthorid\` = 1))
+            group by \`book\`.\`id\``,
         },
         {
             message: 'joins multiple relations 1',

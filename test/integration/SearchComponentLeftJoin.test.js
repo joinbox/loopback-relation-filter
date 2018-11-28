@@ -3,7 +3,7 @@ const { expect } = require('chai');
 const SetupIntegration = require('../support/setup/integration');
 const createAndLinkBookData = require('../support/fixtures/createAndLinkBookData');
 
-describe('The loopback-search-component', () => {
+describe('The loopback-search-component left join mode', () => {
 
     SetupIntegration({ env: 'leftjoin_test' });
 
@@ -287,7 +287,7 @@ describe('The loopback-search-component', () => {
             .query({ filter: JSON.stringify(query) })
             .then(result => result.body);
 
-        expect(books).to.have.length(5);
+        expect(books).to.have.length(1);
     });
 
     it('the component properly transforms not in operators in and queries', async function() {

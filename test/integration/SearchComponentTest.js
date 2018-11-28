@@ -287,7 +287,7 @@ describe('The loopback-search-component postgresql', () => {
             .query({ filter: JSON.stringify(query) })
             .then(result => result.body);
 
-        expect(books).to.have.length(5);
+        expect(books).to.have.length(1);
     });
 
     it('the component properly transforms not in operators in and queries', async function() {

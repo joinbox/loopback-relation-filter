@@ -117,14 +117,14 @@ module.exports = class SearchQueryBuilder {
         // joining the same table multiple times.
         const relations = {};
         // Iterate depth-first and create all aliases!
-        builder.andWhere((subBuilder) => {
+        builder.where((subBuilder) => {
             const options = { preserveCase: this.preserveColumnCase, isOr: false };
-            this._handleFilters(and, subBuilder.and, rootModel, aliasProvider, relations, options);
+            this._handleFilters(and, subBuilder, rootModel, aliasProvider, relations, options);
         });
 
-        builder.orWhere((subBuilder) => {
+        builder.where((subBuilder) => {
             const options = { preserveCase: this.preserveColumnCase, isOr: true };
-            this._handleFilters(or, subBuilder.or, rootModel, aliasProvider, relations, options);
+            this._handleFilters(or, subBuilder, rootModel, aliasProvider, relations, options);
         });
 
         return builder;
@@ -134,6 +134,7 @@ module.exports = class SearchQueryBuilder {
         this._forEachQuery(filters, (propertyName, query) => {
             // Since we proceed the filters recursively (depth-first) we need to restore the state
             // of the query builder every time we enter a new branch.
+            // TODO do not use internal knex stuff ? re-generate a sub query ?
             const subQueryBuilder = opts.isOr ? builder.or : builder.and;
             if (rootModel.isRelation(propertyName)) {
                 const { modelTo } = this._trackAliases(
@@ -144,13 +145,14 @@ module.exports = class SearchQueryBuilder {
                     opts,
                 );
                 this.applyFilters(subQueryBuilder, modelTo, query, aliasProvider);
-            }
-            if (rootModel.isProperty(propertyName)) {
+            } else if (rootModel.isProperty(propertyName)) {
                 const propertyFilter = {
                     property: rootModel.getColumnName(propertyName, opts),
                     value: query,
                 };
                 this.applyPropertyFilter(propertyFilter, subQueryBuilder, rootModel);
+            } else if(propertyName === 'or' || propertyName === 'and') {
+              this.applyFilters(subQueryBuilder, rootModel, {[propertyName]: query}, aliasProvider);
             }
         });
     }

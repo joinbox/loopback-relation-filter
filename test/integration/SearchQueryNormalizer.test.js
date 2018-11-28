@@ -349,6 +349,58 @@ describe('The Search Query Normalizer', () => {
             ]);
     });
 
+    it('respects or with and queries and normalizes them at root level', function() {
+        const newWhere = this.normalize('Book', {
+            title: 'Animal Farm',
+            or: [
+              { publisherId: 1 },
+              { mainAuthorId: 1 },
+            ],
+        });
+
+        expect(newWhere)
+            .to.have.property('and')
+            .that.deep.equals([
+              {
+                title: {
+                  '=': 'Animal Farm'
+                }
+              },
+              { or: [
+                { publisherId: { '=': 1 }},
+                { mainAuthorId: { '=': 1 }}
+              ]}
+            ]);
+    });
+
+    it('respects or with and queries and normalizes them at root level 2', function() {
+      const newWhere = this.normalize('Book', {
+        and: [
+          { title: 'Animal Farm' },
+          {
+            or: [
+              { publisherId: 1 },
+              { mainAuthorId: 1 },
+            ]
+          },
+        ]
+      });
+
+      expect(newWhere)
+      .to.have.property('and')
+      .that.deep.equals([
+        {
+          title: {
+            '=': 'Animal Farm'
+          }
+        },
+        { or: [
+          { publisherId: { '=': 1 }},
+          { mainAuthorId: { '=': 1 }}
+        ]}
+      ]);
+    });
+
     it('normalize order clause on root model string input', function() {
       const newOrder = this.normalizeOrder('Book', 'title ASC');
 

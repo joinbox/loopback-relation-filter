@@ -50,7 +50,6 @@ module.exports = class SearchQueryNormalizer {
         const rootModel = this.getWrappedModel(rootModelName);
         const normalizedAnd = [];
         const normalizedOr = [];
-
         Object
             .keys(where)
             .forEach((property) => {
@@ -58,7 +57,7 @@ module.exports = class SearchQueryNormalizer {
 
                 if (property === 'and') {
                     normalizedAnd.push(...query);
-                } else if (property === 'or') {
+                } else if (property === 'or' && normalizedAnd.length === 0) {
                     normalizedOr.push(...query);
                 } else if (this.isValidProperty(rootModel, property)) {
                     // this also includes or queries
