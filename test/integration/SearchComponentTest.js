@@ -45,6 +45,41 @@ describe('The loopback-search-component postgresql', () => {
         expect(book2).to.be.ok;
     });
 
+    it('the component allows filtering with count method', async function() {
+
+      const query = {
+        authors: {
+          firstName: 'George',
+          lastName: {
+            ilike: 'orwe%',
+          },
+        },
+      };
+      // this will usually return 5 books
+      const booksCount = await this.apiClient.get('/books/count')
+      .query({ where: JSON.stringify(query) })
+      .then(result => result.body);
+
+      expect(booksCount).to.have.property('count', 2);
+
+    });
+
+    it('the component allows filtering with count method 2', async function() {
+
+      const query = {
+        authors: {
+          id: { inq: [1]}
+        },
+      };
+      // this will usually return 5 books
+      const booksCount = await this.apiClient.get('/books/count')
+      .query({ where: JSON.stringify(query) })
+      .then(result => result.body);
+
+      expect(booksCount).to.have.property('count', 1);
+
+    });
+
     it('the component respects original id restrictions', async function() {
 
         const title = 'Animal Farm';
