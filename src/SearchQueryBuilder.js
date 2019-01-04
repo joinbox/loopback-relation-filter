@@ -1,10 +1,40 @@
 const knex = require('knex');
+const _ = require('lodash');
 
 const ModelWrapper = require('./ModelWrapper');
 const TableAliasProvider = require('./TableAliasProvider');
 const SearchQueryNormalizer = require('./SearchQueryNormalizer');
 
 const { UnknownOperatorError }= require('./error');
+
+const operatorMaps = {
+  postgresql: {
+    neq: '!=',
+    gt: '>',
+    lt: '<',
+    gte: '>=',
+    lte: '<=',
+    like: 'like',
+    ilike: 'ilike',
+    nlike: 'not like',
+    nilike: 'not ilike',
+    regexp: '~',
+    iregexp: '~*',
+  },
+  mysql: {
+    neq: '!=',
+    gt: '>',
+    lt: '<',
+    gte: '>=',
+    lte: '<=',
+    like: 'like binary',
+    ilike: 'like',
+    nlike: 'not like binary',
+    nilike: 'not like',
+    regexp: 'regexp binary',
+    iregexp: 'regexp',
+  }
+};
 
 /**
  * @todo: remove the state by instantiating a new table alias provider
@@ -15,11 +45,13 @@ const { UnknownOperatorError }= require('./error');
 
 module.exports = class SearchQueryBuilder {
 
-    constructor(models, { rejectUnknownProperties = false, preserveColumnCase = true } = {}) {
+    constructor(models, { rejectUnknownProperties = false, preserveColumnCase = true, joinMethod = 'inner' } = {}) {
         this.models = models;
         this.preserveColumnCase = preserveColumnCase;
+        this.joinMethod = joinMethod;
         this._supportedClients = {
             postgresql: 'pg',
+            mysql: 'mysql'
         };
         this.supportedOperators = [
             '=',
@@ -35,6 +67,7 @@ module.exports = class SearchQueryBuilder {
             'inq',
             'nin',
             'between',
+            'regexp',
         ];
         const options = {
             supportedOperators: this.supportedOperators,
@@ -48,23 +81,35 @@ module.exports = class SearchQueryBuilder {
         return knex({ client });
     }
 
+    getOperatorMap(wrappedModel) {
+        const connectorName = wrappedModel.getConnectorName();
+        return operatorMaps[connectorName];
+    }
+
     getClientName(model) {
         const connectorName = model.getConnectorName();
         return this._supportedClients[connectorName];
     }
 
-    queryRelationsAndProperties(builder, rootModel, aliasProvider, query) {
+    queryRelationsAndProperties(builder, rootModel, aliasProvider, query, order) {
 
         const joinAliasProvider = aliasProvider.spawnProvider();
         const filterAliasProvider = aliasProvider.spawnProvider();
         // 1. iterate the query and collect all joins
-        const joins = this.getAllJoins(rootModel, query, joinAliasProvider);
+        const joins = this.getAllJoins(rootModel, query, order, joinAliasProvider);
         joins.forEach(({ table, keyFrom, keyTo }) => {
-            builder.join(table, { [keyFrom]: keyTo });
+            if (this.joinMethod === 'left') {
+                builder.leftJoin(table, { [keyFrom]: keyTo });
+            } else {
+                builder.join(table, { [keyFrom]: keyTo });
+            }
+
         });
         // 2. iterate the query and apply all filters (we need to keep track of the aliases the
         // same way we did before in the joins).
-        return this.applyFilters(builder, rootModel, query, filterAliasProvider);
+        this.applyFilters(builder, rootModel, query, filterAliasProvider);
+        // 3. iterate the order clauses and apply them
+        return this.applyOrder(builder, rootModel, order, filterAliasProvider);
     }
 
     applyFilters(builder, rootModel, { and = [], or = [] }, aliasProvider) {
@@ -72,14 +117,14 @@ module.exports = class SearchQueryBuilder {
         // joining the same table multiple times.
         const relations = {};
         // Iterate depth-first and create all aliases!
-        builder.andWhere((subBuilder) => {
+        builder.where((subBuilder) => {
             const options = { preserveCase: this.preserveColumnCase, isOr: false };
-            this._handleFilters(and, subBuilder.and, rootModel, aliasProvider, relations, options);
+            this._handleFilters(and, subBuilder, rootModel, aliasProvider, relations, options);
         });
 
-        builder.orWhere((subBuilder) => {
+        builder.where((subBuilder) => {
             const options = { preserveCase: this.preserveColumnCase, isOr: true };
-            this._handleFilters(or, subBuilder.or, rootModel, aliasProvider, relations, options);
+            this._handleFilters(or, subBuilder, rootModel, aliasProvider, relations, options);
         });
 
         return builder;
@@ -89,6 +134,7 @@ module.exports = class SearchQueryBuilder {
         this._forEachQuery(filters, (propertyName, query) => {
             // Since we proceed the filters recursively (depth-first) we need to restore the state
             // of the query builder every time we enter a new branch.
+            // TODO do not use internal knex stuff ? re-generate a sub query ?
             const subQueryBuilder = opts.isOr ? builder.or : builder.and;
             if (rootModel.isRelation(propertyName)) {
                 const { modelTo } = this._trackAliases(
@@ -99,13 +145,47 @@ module.exports = class SearchQueryBuilder {
                     opts,
                 );
                 this.applyFilters(subQueryBuilder, modelTo, query, aliasProvider);
-            }
-            if (rootModel.isProperty(propertyName)) {
+            } else if (rootModel.isProperty(propertyName)) {
                 const propertyFilter = {
                     property: rootModel.getColumnName(propertyName, opts),
                     value: query,
                 };
-                this.applyPropertyFilter(propertyFilter, subQueryBuilder);
+                this.applyPropertyFilter(propertyFilter, subQueryBuilder, rootModel);
+            } else if(propertyName === 'or' || propertyName === 'and') {
+              this.applyFilters(subQueryBuilder, rootModel, {[propertyName]: query}, aliasProvider);
+            }
+        });
+    }
+
+    applyOrder(builder, rootModel, orderClauses, aliasProvider) {
+      const relations = {};
+      const options = { preserveCase: this.preserveColumnCase };
+      orderClauses.forEach(order => {
+        this._handleOrder(order, builder, rootModel, aliasProvider, relations, options);
+      });
+
+      return builder;
+    }
+
+    _handleOrder(order, builder, rootModel, aliasProvider, relations, options) {
+        _.mapValues(order, (subOrder, propertyName) => {
+            if (rootModel.isRelation(propertyName)) {
+                const { modelTo } = this._trackAliases(
+                    rootModel,
+                    propertyName,
+                    aliasProvider,
+                    relations,
+                    options,
+                );
+                this._handleOrder(subOrder, builder, modelTo, aliasProvider, relations, options);
+            }
+            if (rootModel.isProperty(propertyName)) {
+                const propertyOrder = {
+                    orderAlias: rootModel.alias + '_' + propertyName,
+                    property: rootModel.getColumnName(propertyName, options),
+                    direction: subOrder,
+                };
+                this.applyPropertyOrder(propertyOrder, builder);
             }
         });
     }
@@ -166,8 +246,8 @@ module.exports = class SearchQueryBuilder {
      * @param aliasProvider
      * @return {*}
      */
-    getAllJoins(rootModel, { and = [], or = [] }, aliasProvider) {
-        const filters = and.concat(or);
+    getAllJoins(rootModel, { and = [], or = [] }, order, aliasProvider) {
+        const filters = and.concat(or).concat(order);
         const children = [];
         const relations = {};
         const joins = [];
@@ -197,7 +277,11 @@ module.exports = class SearchQueryBuilder {
         });
         // append all joins of the lower levels
         return children.reduce((allJoins, { model, query }) => {
-            const lowerJoins = this.getAllJoins(model, query, aliasProvider);
+            let childOrder = [];
+            if(!query.and && !query.or){
+              childOrder = [query];
+            }
+            const lowerJoins = this.getAllJoins(model, query, childOrder, aliasProvider);
             allJoins.push(...lowerJoins);
             return allJoins;
         }, joins.slice(0));
@@ -247,24 +331,15 @@ module.exports = class SearchQueryBuilder {
      *          comparison operator and create a where statement of the form
      *          `property operator comparedValue`
      * @param {KnexQueryBuilder} the knex query builder
+     * @param {WrappedModel} the model to query
      *
      * @return {KnexQueryBuilder} the knex query builder
      */
-    applyPropertyFilter({ property, value }, builder) {
+    applyPropertyFilter({ property, value }, builder, rootModel) {
 
         if (!value) return;
-        const operatorMap = {
-            neq: '!=',
-            gt: '>',
-            lt: '<',
-            gte: '>=',
-            lte: '<=',
-            like: 'like',
-            ilike: 'ilike',
-            nlike: 'not like',
-            nilike: 'not ilike',
 
-        };
+        const operatorMap = this.getOperatorMap(rootModel);
         const operator = this.supportedOperators.find(op => {
             return Object.prototype.hasOwnProperty.call(value, op);
         });
@@ -284,7 +359,7 @@ module.exports = class SearchQueryBuilder {
             case 'nlike':
             case 'nilike': {
                 const mappedOperator = operatorMap[operator];
-                return builder.where(property, mappedOperator, content);
+                return builder.whereRaw(`:property: ${mappedOperator} :value`, {property, value:content});
             }
             case 'between':
                 return builder.whereBetween(property, content);
@@ -292,6 +367,10 @@ module.exports = class SearchQueryBuilder {
                 return builder.whereIn(property, content);
             case 'nin':
                 return builder.whereNotIn(property, content);
+            case 'regexp': {
+                const mappedOperator = operatorMap[(content.ignoreCase ? 'i' : '') + operator];
+                return builder.whereRaw(`:property: ${mappedOperator} :value`, {property, value: content.source});
+            }
             default:
                 const valueString = JSON.stringify(value);
                 const msg = `Unknown operator encountered when comparing ${property} to ${valueString}`;
@@ -299,6 +378,26 @@ module.exports = class SearchQueryBuilder {
             }
         }
         return builder;
+    }
+
+    /**
+     * Appends a order clause to the query passed by builder.
+     *
+     * @param   {orderAlias, property, direction} Whereas orderAlias is the given unique alias for this order clause
+     *          property is the fully resolved name of the property
+     *          and direction should be asc or desc
+     * @param {KnexQueryBuilder} the knex query builder
+     *
+     * @return {KnexQueryBuilder} the knex query builder
+     */
+    applyPropertyOrder({ orderAlias, property, direction }, builder) {
+      if(direction === 'asc'){
+        builder.min({ [orderAlias]: property });
+      } else {
+        builder.max({ [orderAlias]: property });
+      }
+
+      return builder.orderBy(orderAlias, direction);
     }
 
     /**
@@ -318,12 +417,17 @@ module.exports = class SearchQueryBuilder {
         const tableName = rootModel.getAliasedTable();
 
         const basicSelect = builder(tableName).select(id).groupBy(id);
-        if (!filter.where) {
-            return basicSelect;
-        }
 
         const where = this.normalizer.normalizeQuery(rootModel.getName(), filter.where || {});
-        return this.queryRelationsAndProperties(basicSelect, rootModel, aliasProvider, where);
+        const order = this.normalizer.normalizeOrder(rootModel.getName(), filter.order);
+        const selectWithFilterApplied = this.queryRelationsAndProperties(basicSelect, rootModel, aliasProvider, where, order);
+        if(filter.limit){
+          selectWithFilterApplied.limit(filter.limit);
+        }
+        if(filter.skip){
+          selectWithFilterApplied.offset(filter.skip);
+        }
+        return selectWithFilterApplied;
     }
 
     /**

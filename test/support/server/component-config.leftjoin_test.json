@@ -1,0 +1,7 @@
+{
+    "../../../index": {
+        "rejectUnknownProperties": true,
+        "preserveColumnCase": false,
+        "joinMethod": "left"
+    }
+}

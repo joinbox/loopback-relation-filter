@@ -10,6 +10,12 @@
     "name": {
       "type": "string",
       "required": true
+    },
+    "address": {
+      "type": "string",
+      "mysql": {
+         "columnName": "office_address"
+       }
     }
   },
   "validations": [],

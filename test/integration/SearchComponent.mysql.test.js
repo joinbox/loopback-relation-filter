@@ -3,9 +3,9 @@ const { expect } = require('chai');
 const SetupIntegration = require('../support/setup/integration');
 const createAndLinkBookData = require('../support/fixtures/createAndLinkBookData');
 
-describe('The loopback-search-component postgresql', () => {
+describe('The loopback-search-component mysql', () => {
 
-    SetupIntegration();
+    SetupIntegration({ env: 'mysql_test' });
 
     before(function() {
         this.Book = this.models.Book;
@@ -43,41 +43,6 @@ describe('The loopback-search-component postgresql', () => {
 
         expect(book1).to.be.ok;
         expect(book2).to.be.ok;
-    });
-
-    it('the component allows filtering with count method', async function() {
-
-      const query = {
-        authors: {
-          firstName: 'George',
-          lastName: {
-            ilike: 'orwe%',
-          },
-        },
-      };
-      // this will usually return 5 books
-      const booksCount = await this.apiClient.get('/books/count')
-      .query({ where: JSON.stringify(query) })
-      .then(result => result.body);
-
-      expect(booksCount).to.have.property('count', 2);
-
-    });
-
-    it('the component allows filtering with count method 2', async function() {
-
-      const query = {
-        authors: {
-          id: { inq: [1]}
-        },
-      };
-      // this will usually return 5 books
-      const booksCount = await this.apiClient.get('/books/count')
-      .query({ where: JSON.stringify(query) })
-      .then(result => result.body);
-
-      expect(booksCount).to.have.property('count', 1);
-
     });
 
     it('the component respects original id restrictions', async function() {
@@ -504,6 +469,48 @@ describe('The loopback-search-component postgresql', () => {
             .then(result => result.body);
 
         expect(authors).to.have.length(1);
+    });
+
+    it('the component allows filtering with regexp operator', async function() {
+
+      const query = {
+        where: {
+          title: {
+            regexp: '/^The/',
+          },
+        },
+        include: ['authors'],
+      };
+      // this will usually return 5 books
+      const books = await this.apiClient.get('/books')
+      .query({ filter: JSON.stringify(query) })
+      .then(result => result.body);
+
+      expect(books).to.have.length(2);
+
+      const book1 = books.find(book => book.title === 'The great gatsby');
+      const book2 = books.find(book => book.title === 'The hunger games');
+
+      expect(book1).to.be.ok;
+      expect(book2).to.be.ok;
+    });
+
+    it('the component allows filtering over property with custom columnName', async function() {
+
+      const query = {
+        where: {
+          publisher: {
+            address: 'Paris',
+          },
+        },
+      };
+      // this will usually return 5 books
+      const books = await this.apiClient.get('/books')
+      .query({ filter: JSON.stringify(query) })
+      .then(result => result.body);
+
+      expect(books).to.have.length(1);
+      expect(books[0]).to.have.property('title', 'The great gatsby');
     });
 
     describe('the component allows ordering', function(){

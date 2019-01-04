@@ -16,6 +16,7 @@ module.exports = function(loopbackApp, settings) {
 
             if (searchConfig.enabled === true) {
                 model.observe('access', extendedFindQuery(model, loopbackApp.models, searchConfig));
+                model.afterRemote('find', extendedFindQueryHandleOrder(model, loopbackApp.models, searchConfig));
             }
 
         });
@@ -33,18 +34,18 @@ module.exports.error = error;
  * @param models the loopback models object
  * @returns {Function}
  */
-function extendedFindQuery(model, models, { rejectUnknownProperties = false, preserveColumnCase = true } = {}) {
+function extendedFindQuery(model, models, { rejectUnknownProperties = false, preserveColumnCase = true, joinMethod = 'inner' } = {}) {
     return function(ctx, next) {
-        const originalWhere = getWhereFilter(ctx);
-        if (!originalWhere) {
+        const originalFilter = getFilter(ctx);
+        if (!originalFilter) {
             next();
         } else {
-            const builder = new SearchQueryBuilder(models, { rejectUnknownProperties, preserveColumnCase });
-            const query = Object.assign({}, originalWhere);
+            const builder = new SearchQueryBuilder(models, { rejectUnknownProperties, preserveColumnCase, joinMethod });
+            const filter = Object.assign({}, originalFilter);
 
             try {
                 const idName = model.getIdName();
-                const databaseQuery = builder.buildQuery(model.modelName, { where: query });
+                const databaseQuery = builder.buildQuery(model.modelName, filter);
                 const sqlString = databaseQuery.toString();
 
                 model.dataSource.connector.execute(sqlString, (err, result) => {
@@ -63,6 +64,11 @@ function extendedFindQuery(model, models, { rejectUnknownProperties = false, pre
                         // Therefore we remove all the other constrains since they could lead to
                         // contradicting statements!
                         ctx.query.where = {[idName]: { inq: resultIds }};
+                        // Remove the order,limit,skip from the original query
+                        delete ctx.query.order;
+                        delete ctx.query.limit;
+                        delete ctx.query.skip;
+                        delete ctx.query.offset;
                         next();
                     }
                 });
@@ -77,14 +83,40 @@ function extendedFindQuery(model, models, { rejectUnknownProperties = false, pre
 }
 
 /**
+ * Creates the function which is invoked for the 'find' and 'findOne' after loading document for handling order.
+ *
+ * For more information on remote hooks see https://loopback.io/doc/en/lb3/Remote-hooks.html
+ *
+ * @param model a loopback model
+ * @param models the loopback models object
+ * @returns {Function}
+ */
+function extendedFindQueryHandleOrder(model, models, { rejectUnknownProperties = false, preserveColumnCase = true } = {}) {
+    return function(ctx, result, next) {
+      if (!ctx.result && !Array.isArray(ctx.result)) {
+        next();
+      } else {
+        const idName = model.getIdName();
+        if(ctx.args && ctx.args.filter && ctx.args.filter.where && ctx.args.filter.where[idName] && ctx.args.filter.where[idName].inq){
+          const idsOrder = ctx.args.filter.where[idName].inq;
+          ctx.result.sort(function(a, b){
+            return idsOrder.indexOf(a[idName]) - idsOrder.indexOf(b[idName]);
+          });
+        }
+        next();
+      }
+    };
+}
+
+/**
  * Returns the filter query (either sent via API or remote method invocation).
  *
  * @param context the loopback request context
  * @returns {null}
  */
-function getWhereFilter(context = {}) {
-    const query = context.query || {};
-    return query.where;
+function getFilter(context = {}) {
+    const query = context.query;
+    return query;
 }
 
 /**

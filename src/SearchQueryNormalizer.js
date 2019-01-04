@@ -1,6 +1,8 @@
 
 const ModelWrapper = require('./ModelWrapper');
 const error = require('./error');
+const LoopbackDaoUtils = require('loopback-datasource-juggler/lib/utils');
+const _ = require('lodash');
 
 const defaultSupportedOpperators = [
     '=',
@@ -16,6 +18,7 @@ const defaultSupportedOpperators = [
     'inq',
     'nin',
     'between',
+    'regexp',
 ];
 
 /**
@@ -47,7 +50,6 @@ module.exports = class SearchQueryNormalizer {
         const rootModel = this.getWrappedModel(rootModelName);
         const normalizedAnd = [];
         const normalizedOr = [];
-
         Object
             .keys(where)
             .forEach((property) => {
@@ -55,7 +57,7 @@ module.exports = class SearchQueryNormalizer {
 
                 if (property === 'and') {
                     normalizedAnd.push(...query);
-                } else if (property === 'or') {
+                } else if (property === 'or' && normalizedAnd.length === 0) {
                     normalizedOr.push(...query);
                 } else if (this.isValidProperty(rootModel, property)) {
                     // this also includes or queries
@@ -74,6 +76,27 @@ module.exports = class SearchQueryNormalizer {
         }
 
         return result;
+    }
+
+    normalizeOrder(rootModelName, order) {
+        const rootModel = this.getWrappedModel(rootModelName);
+        const normalizedOrder = [];
+
+        if(!order){
+          return normalizedOrder;
+        }
+
+        if(!Array.isArray(order)){
+          order = [order];
+        }
+
+        order.forEach( orderClause => {
+          const [propertyPath, direction] = orderClause.split(' ');
+
+          normalizedOrder.push(_.set({}, propertyPath, direction.toLowerCase()));
+        });
+
+        return normalizedOrder;
     }
 
     /**
@@ -122,6 +145,9 @@ module.exports = class SearchQueryNormalizer {
 
     normalizeProperty(rootModel, property, query) {
         const comparison = this.hasSupportedOperator(query) ? query : { '=': query };
+        if (comparison.regexp) {
+          comparison.regexp = LoopbackDaoUtils.toRegExp(comparison.regexp);
+        }
         return {
             [property]: comparison,
         };

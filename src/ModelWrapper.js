@@ -13,7 +13,7 @@ module.exports = class ModelWrapper {
     getTable() {
         const schema = this.getSchema();
         const table = this.getTableName();
-        return `${schema}.${table}`;
+        return (schema) ? `${schema}.${table}`: `${table}`;
     }
 
     getTableName() {
@@ -21,7 +21,7 @@ module.exports = class ModelWrapper {
     }
 
     getSchema() {
-        return this.connector.schema(this.getModelName()) || 'public';
+        return this.connector.schema(this.getModelName());
     }
 
     getFullyQualifiedTable() {
@@ -35,7 +35,7 @@ module.exports = class ModelWrapper {
 
     getColumnName(key, { alias = this.alias, preserveCase = true } = {}) {
         const tableName = alias || this.getTable();
-        const columnName = preserveCase ? key : key.toLowerCase();
+        const columnName = preserveCase ? this.getRealColumnName(key) : this.getRealColumnName(key).toLowerCase();
         return `${tableName}.${columnName}`;
     }
 
@@ -49,6 +49,14 @@ module.exports = class ModelWrapper {
 
     getModelProperties() {
         return this.model.definition.properties;
+    }
+
+    getRealColumnName(key){
+      if(this.model.definition.properties[key][this.connector.name] && this.model.definition.properties[key][this.connector.name].columnName){
+        return this.model.definition.properties[key][this.connector.name].columnName;
+      } else {
+        return key;
+      }
     }
 
     getModelRelations() {

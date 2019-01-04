@@ -3,9 +3,9 @@ const { expect } = require('chai');
 const SetupIntegration = require('../support/setup/integration');
 const createAndLinkBookData = require('../support/fixtures/createAndLinkBookData');
 
-describe('The loopback-search-component postgresql', () => {
+describe('The loopback-search-component left join mode', () => {
 
-    SetupIntegration();
+    SetupIntegration({ env: 'leftjoin_test' });
 
     before(function() {
         this.Book = this.models.Book;
@@ -43,41 +43,6 @@ describe('The loopback-search-component postgresql', () => {
 
         expect(book1).to.be.ok;
         expect(book2).to.be.ok;
-    });
-
-    it('the component allows filtering with count method', async function() {
-
-      const query = {
-        authors: {
-          firstName: 'George',
-          lastName: {
-            ilike: 'orwe%',
-          },
-        },
-      };
-      // this will usually return 5 books
-      const booksCount = await this.apiClient.get('/books/count')
-      .query({ where: JSON.stringify(query) })
-      .then(result => result.body);
-
-      expect(booksCount).to.have.property('count', 2);
-
-    });
-
-    it('the component allows filtering with count method 2', async function() {
-
-      const query = {
-        authors: {
-          id: { inq: [1]}
-        },
-      };
-      // this will usually return 5 books
-      const booksCount = await this.apiClient.get('/books/count')
-      .query({ where: JSON.stringify(query) })
-      .then(result => result.body);
-
-      expect(booksCount).to.have.property('count', 1);
-
     });
 
     it('the component respects original id restrictions', async function() {
@@ -540,7 +505,7 @@ describe('The loopback-search-component postgresql', () => {
             .query({ filter: JSON.stringify(query) })
             .then(result => result.body);
 
-        expect(books).to.have.length(3);
+        expect(books).to.have.length(5);
 
         expect(books[0]).to.have.property('title', 'Animal Farm');
         expect(books[1]).to.have.property('title', 'The great gatsby');
@@ -559,12 +524,13 @@ describe('The loopback-search-component postgresql', () => {
         .query({ filter: JSON.stringify(query) })
         .then(result => result.body);
 
-        expect(books).to.have.length(4);
+        expect(books).to.have.length(5);
 
         expect(books[0]).to.have.property('title', 'Harry Potter');
         expect(books[1]).to.have.property('title', 'The great gatsby');
         expect(books[2]).to.have.property('title', 'Animal Farm');
         expect(books[3]).to.have.property('title', '1984');
+        expect(books[4]).to.have.property('title', 'The hunger games');
 
       });
 
@@ -579,12 +545,13 @@ describe('The loopback-search-component postgresql', () => {
         .query({ filter: JSON.stringify(query) })
         .then(result => result.body);
 
-        expect(books).to.have.length(4);
+        expect(books).to.have.length(5);
 
         expect(books[0]).to.have.property('title', 'Harry Potter');
         expect(books[1]).to.have.property('title', 'The great gatsby');
         expect(books[2]).to.have.property('title', '1984');
         expect(books[3]).to.have.property('title', 'Animal Farm');
+        expect(books[4]).to.have.property('title', 'The hunger games');
 
       });
 

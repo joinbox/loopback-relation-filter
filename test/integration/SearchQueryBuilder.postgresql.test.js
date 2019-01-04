@@ -1,8 +1,11 @@
 const { expect } = require('chai');
 
+const SetupIntegration = require('../support/setup/integration');
 const SearchQueryBuilder = require('../../src/SearchQueryBuilder');
 
-describe('The SearchQueryBuilder', function(){
+describe('The SearchQueryBuilder postgresql', function(){
+
+    SetupIntegration({ env: 'postgresql_test' });
 
     beforeEach('setup query builder', function(){
         // set the preserveColumnCase option to false, since the postgres connector seems to
@@ -151,8 +154,8 @@ describe('The SearchQueryBuilder', function(){
                     },
                 ],
             },
-            result: `select "book"."id" from "public"."book" as "book" 
-                        where ("book"."title" = 'Animal Farm' or "book"."title" = '1984') 
+            result: `select "book"."id" from "public"."book" as "book"
+                        where ("book"."title" = 'Animal Farm' or "book"."title" = '1984')
                     group by "book"."id"`,
         },
         {
@@ -172,8 +175,8 @@ describe('The SearchQueryBuilder', function(){
             result: `select "book"."id" from "public"."book" as "book"
                         inner join "public"."authorbook" as "book_authorbook_authors" on "book"."id" = "book_authorbook_authors"."bookid"
                         inner join "public"."author" as "book_authors" on "book_authorbook_authors"."authorid" = "book_authors"."id"
-                    where ("book"."title" = 'Animal Farm' 
-                        or ("book_authors"."firstname" = 'Scott')) 
+                    where ("book"."title" = 'Animal Farm'
+                        or ("book_authors"."firstname" = 'Scott'))
                     group by "book"."id"`,
         },
         {
@@ -205,13 +208,13 @@ describe('The SearchQueryBuilder', function(){
                     },
                 ]
             },
-            result: `select "author"."id" from "public"."author" as "author" 
-                inner join "public"."authorbook" as "author_authorbook_books" 
-                    on "author"."id" = "author_authorbook_books"."authorid" 
-                inner join "public"."book" as "author_books" 
-                    on "author_authorbook_books"."bookid" = "author_books"."id" 
-                inner join "public"."publisher" as "book_publisher" 
-                    on "author_books"."publisherid" = "book_publisher"."id" 
+            result: `select "author"."id" from "public"."author" as "author"
+                inner join "public"."authorbook" as "author_authorbook_books"
+                    on "author"."id" = "author_authorbook_books"."authorid"
+                inner join "public"."book" as "author_books"
+                    on "author_authorbook_books"."bookid" = "author_books"."id"
+                inner join "public"."publisher" as "book_publisher"
+                    on "author_books"."publisherid" = "book_publisher"."id"
             where ("author"."lastname" like 'Orw%' and (("book_publisher"."name" = 'NAL'))) group by "author"."id"`,
         },
     ];
@@ -294,6 +297,18 @@ describe('The SearchQueryBuilder', function(){
                 where: { id: { nin: [1, 10, 100] }},
                 result: createResult('not in', '(1, 10, 100)'),
             },
+            {
+              message: 'regexp',
+              where: { title: { regexp: /^The/ }},
+              result: `select "book"."id" from "public"."book" as "book"
+                        where ("book"."title" ~ '^The') group by "book"."id"`,
+            },
+            {
+              message: 'iregexp',
+              where: { title: { regexp: /^the/i }},
+              result: `select "book"."id" from "public"."book" as "book"
+                        where ("book"."title" ~* '^the') group by "book"."id"`,
+            },
         ];
 
         runCases(cases, this);
@@ -308,14 +323,6 @@ describe('The SearchQueryBuilder', function(){
                     }
                 });
             }).to.throw;
-        });
-
-        it.skip("regexp: (not supported yet)", function(){
-            runCase.call(this, {
-                where: { id: { regexp: [0, 5, 10] }},
-                message: 'regexp',
-                result: ''
-            });
         });
 
         it.skip("near: (not supported yet)", function(){
@@ -375,6 +382,97 @@ describe('The SearchQueryBuilder', function(){
 
     });
 
+    describe('supports order clause on related model', function(){
+
+      runCases([
+        {
+          message: 'Simple ordering on belongsTo',
+          order: 'publisher.name ASC',
+          result: `select "book"."id", min("book_publisher"."name") as "book_publisher_name" from "public"."book" as "book"
+            inner join "public"."publisher" as "book_publisher" on "book"."publisherid" = "book_publisher"."id"
+            group by "book"."id" order by "book_publisher_name" asc`,
+        },
+        {
+          message: 'Complexe ordering on belongsTo on belongsTo',
+          model: 'Page',
+          order: 'book.publisher.name ASC',
+          result: `select "page"."id", min("book_publisher"."name") as "book_publisher_name" from "public"."page" as "page"
+            inner join "public"."book" as "page_book" on "page"."bookid" = "page_book"."id"
+            inner join "public"."publisher" as "book_publisher" on "page_book"."publisherid" = "book_publisher"."id"
+            group by "page"."id" order by "book_publisher_name" asc`,
+        },
+        {
+          message: 'Multiple complexe ordering',
+          model: 'Page',
+          order: ['book.publisher.name ASC', 'number DESC'],
+          result: `select "page"."id", min("book_publisher"."name") as "book_publisher_name", max("page"."number") as "page_number"
+            from "public"."page" as "page"
+            inner join "public"."book" as "page_book" on "page"."bookid" = "page_book"."id"
+            inner join "public"."publisher" as "book_publisher" on "page_book"."publisherid" = "book_publisher"."id"
+            group by "page"."id" order by "book_publisher_name" asc, "page_number" desc`,
+        },
+        {
+          message: 'Multiple ordering over hasAndBelongsToMany asc',
+          model: 'Book',
+          order: ['authors.lastName ASC'],
+          result: `select "book"."id", min("book_authors"."lastname") as "book_authors_lastName" from "public"."book" as "book"
+            inner join "public"."authorbook" as "book_authorbook_authors" on "book"."id" = "book_authorbook_authors"."bookid"
+            inner join "public"."author" as "book_authors" on "book_authorbook_authors"."authorid" = "book_authors"."id"
+            group by "book"."id" order by "book_authors_lastName" asc`,
+        },
+        {
+          message: 'Multiple ordering over hasAndBelongsToMany desc',
+          model: 'Book',
+          order: ['authors.lastName DESC'],
+          result: `select "book"."id", max("book_authors"."lastname") as "book_authors_lastName" from "public"."book" as "book"
+            inner join "public"."authorbook" as "book_authorbook_authors" on "book"."id" = "book_authorbook_authors"."bookid"
+            inner join "public"."author" as "book_authors" on "book_authorbook_authors"."authorid" = "book_authors"."id"
+            group by "book"."id" order by "book_authors_lastName" desc`,
+        },
+      ], this);
+
+    });
+
+    describe('supports skip, limit', function(){
+
+      runCases([
+        {
+          message: 'Simple limit',
+          limit: 1,
+          result: `select "book"."id" from "public"."book" as "book" group by "book"."id" limit 1`,
+        },
+        {
+          message: 'Simple skip',
+          limit: 10,
+          skip: 1,
+          result: `select "book"."id" from "public"."book" as "book" group by "book"."id" limit 10 offset 1`,
+        },
+      ], this);
+
+    });
+
+    describe('can configure join operation (inner,left,right)', function(){
+
+      // TODO avoid re-doing setup, need sub describe() for spliting this tests
+      beforeEach('setup query builder with left join', function(){
+        // set the preserveColumnCase option to false, since the postgres connector seems to
+        // do weird conversions now and then
+        // @see: https://github.com/strongloop/loopback-connector-postgresql/issues/38
+        this.builder = new SearchQueryBuilder(this.models, {preserveColumnCase: false, joinMethod: 'left'});
+      });
+
+      runCases([
+        {
+          message: 'Simple ordering with left join',
+          order: 'publisher.name ASC',
+          result: `select "book"."id", min("book_publisher"."name") as "book_publisher_name" from "public"."book" as "book"
+            left join "public"."publisher" as "book_publisher" on "book"."publisherid" = "book_publisher"."id"
+            group by "book"."id" order by "book_publisher_name" asc`,
+        },
+      ], this);
+
+    });
+
     function normalizeExpectedResult(queryString){
         return queryString.replace(/\s{2,}/g, ' ');
     }
@@ -390,7 +488,12 @@ describe('The SearchQueryBuilder', function(){
         const message = testCase.message;
 
         it(message, function(){
-            const filter = { where: testCase.where };
+            const filter = {
+              where: testCase.where,
+              order: testCase.order,
+              limit: testCase.limit,
+              skip: testCase.skip
+            };
             const expectedResult = testCase.result;
 
             const query = this.builder.buildQuery(model, filter);

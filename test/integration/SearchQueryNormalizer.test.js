@@ -1,13 +1,17 @@
 const { expect } = require('chai');
 
+const SetupIntegration = require('../support/setup/integration');
 const SearchQueryNormalizer = require('../../src/SearchQueryNormalizer');
 const { UnknownPropertyError } = require('../../src/error');
 
 describe('The Search Query Normalizer', () => {
 
+    SetupIntegration();
+
     before('basic setup', function() {
         this.model = 'Book';
         this.normalize = (model, query) => this.normalizer.normalizeWhereQuery(model, query);
+        this.normalizeOrder = (model, order) => this.normalizer.normalizeOrder(model, order);
     });
 
     beforeEach(function() {
@@ -45,6 +49,19 @@ describe('The Search Query Normalizer', () => {
         expect(newWhere).to.have.property('and').that.has.length(2);
     });
 
+    it('cast regexp operator filter', function() {
+        const newWhere = this.normalize('Book', {
+            authors: {
+                firstName: {
+                  regexp: '/Michael/'
+                },
+            },
+        });
+
+        expect(newWhere).to.have.property('and').that.has.length(1)
+          .to.have.nested.property('[0].authors.and[0].firstName.regexp')
+          .to.be.an.instanceof(RegExp);
+    });
 
     it('throws an error if an unknown property of a model is encountered and ' +
         'the corresponding option is set to true', function() {
@@ -330,6 +347,121 @@ describe('The Search Query Normalizer', () => {
                     },
                 },
             ]);
+    });
+
+    it('respects or with and queries and normalizes them at root level', function() {
+        const newWhere = this.normalize('Book', {
+            title: 'Animal Farm',
+            or: [
+              { publisherId: 1 },
+              { mainAuthorId: 1 },
+            ],
+        });
+
+        expect(newWhere)
+            .to.have.property('and')
+            .that.deep.equals([
+              {
+                title: {
+                  '=': 'Animal Farm'
+                }
+              },
+              { or: [
+                { publisherId: { '=': 1 }},
+                { mainAuthorId: { '=': 1 }}
+              ]}
+            ]);
+    });
+
+    it('respects or with and queries and normalizes them at root level 2', function() {
+      const newWhere = this.normalize('Book', {
+        and: [
+          { title: 'Animal Farm' },
+          {
+            or: [
+              { publisherId: 1 },
+              { mainAuthorId: 1 },
+            ]
+          },
+        ]
+      });
+
+      expect(newWhere)
+      .to.have.property('and')
+      .that.deep.equals([
+        {
+          title: {
+            '=': 'Animal Farm'
+          }
+        },
+        { or: [
+          { publisherId: { '=': 1 }},
+          { mainAuthorId: { '=': 1 }}
+        ]}
+      ]);
+    });
+
+    it('normalize order clause on root model string input', function() {
+      const newOrder = this.normalizeOrder('Book', 'title ASC');
+
+      expect(newOrder).deep.equals([
+        {
+          title: 'asc',
+        },
+      ]);
+    });
+
+    it('normalize order clause on root model array input', function() {
+      const newOrder = this.normalizeOrder('Book', ['title DESC']);
+
+      expect(newOrder).deep.equals([
+        {
+          title: 'desc',
+        },
+      ]);
+    });
+
+    it('normalize order clause on related model string input', function() {
+      const newOrder = this.normalizeOrder('Book', 'publisher.name ASC');
+
+      expect(newOrder).deep.equals([
+        {
+          publisher: {
+            name: 'asc',
+          }
+        },
+      ]);
+    });
+
+    it('normalize order clause on deep related model string input', function() {
+      const newOrder = this.normalizeOrder('Page', 'book.publisher.name ASC');
+
+      expect(newOrder).deep.equals([
+        {
+          book : {
+            publisher: {
+              name: 'asc',
+            }
+          }
+        },
+      ]);
+    });
+
+    it('normalize mulitple order clause on related model', function() {
+      const newOrder = this.normalizeOrder('Page', ['book.publisher.name ASC', 'number DESC']);
+
+      expect(newOrder).deep.equals([
+        {
+          book : {
+            publisher: {
+              name: 'asc',
+            }
+          }
+        },
+        {
+          number: 'desc',
+        },
+      ]);
     });
 
 });
